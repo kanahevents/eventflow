@@ -23,10 +23,10 @@ const STATUS_OPTIONS = [
   { label: "Reviewing", color: "#60a5fa" },
   { label: "Revisions", color: "#f87171" },
   { label: "Approved",  color: "#34d399" },
-  { label: "Published", color: "#c084fc" },
+  { label: "Published", color: "#7c3aed" },
   { label: "Live",      color: "#34d399" },
   { label: "Completed", color: "#94a3b8" },
-  { label: "Archived",  color: "#334155" },
+  { label: "Archived",  color: "#6b7280" },
 ]
 
 const PHASE_COLORS = [
@@ -39,24 +39,26 @@ const PHASE_COLORS = [
 ]
 
 const VENDOR_ROLES = [
-  { key: "coordinator", label: "Coordinator", color: "#c084fc" },
-  { key: "mc",          label: "MC",          color: "#fbbf24" },
-  { key: "dj",          label: "DJ",          color: "#a78bfa" },
-  { key: "catering",    label: "Catering",    color: "#2dd4bf" },
-  { key: "photography", label: "Photography", color: "#60a5fa" },
-  { key: "videography", label: "Videography", color: "#34d399" },
-  { key: "liveband",    label: "Live Band",   color: "#fb923c" },
-  { key: "decor",       label: "Decor",       color: "#f472b6" },
-  { key: "venue",       label: "Venue",       color: "#e2e8f0" },
+  { key: "coordinator", label: "Coordinator", color: "#7c3aed" },
+  { key: "mc",          label: "MC",          color: "#b45309" },
+  { key: "dj",          label: "DJ",          color: "#6d28d9" },
+  { key: "livemusic",   label: "Live Music",  color: "#c2410c" },
+  { key: "liveband",    label: "Live Band",   color: "#ea580c" },
+  { key: "catering",    label: "Catering",    color: "#0f766e" },
+  { key: "staffing",    label: "Staffing",    color: "#0369a1" },
+  { key: "photography", label: "Photography", color: "#1d4ed8" },
+  { key: "videography", label: "Videography", color: "#047857" },
+  { key: "decor",       label: "Decor",       color: "#be185d" },
+  { key: "venue",       label: "Venue",       color: "#374151" },
 ]
 
 const COORDINATOR_TIERS = [
-  { key: "lead",      label: "Lead Coordinator",      color: "#c084fc" },
+  { key: "lead",      label: "Lead Coordinator",      color: "#7c3aed" },
   { key: "assistant", label: "Assistant Coordinator", color: "#60a5fa" },
 ]
 
 const ITEM_STATUSES = [
-  { key: "upcoming",   label: "Upcoming",    color: "#475569", emoji: "⏳" },
+  { key: "upcoming",   label: "Upcoming",    color: "#4b5563", emoji: "⏳" },
   { key: "inprogress", label: "In Progress", color: "#fbbf24", emoji: "▶" },
   { key: "completed",  label: "Completed",   color: "#34d399", emoji: "✅" },
   { key: "early",      label: "Early! 😊",   color: "#34d399", emoji: "😊" },
@@ -113,11 +115,11 @@ function LiveClock() {
   return (
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 8,
-      background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.35)",
+      background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.25)",
       borderRadius: 24, padding: "8px 20px"
     }}>
       <span style={{ fontSize: 18 }}>🕐</span>
-      <span style={{ color: "#c084fc", fontSize: 20, fontFamily: "Georgia", fontWeight: 700, letterSpacing: 1 }}>{time}</span>
+      <span style={{ color: "#7c3aed", fontSize: 20, fontFamily: "Georgia", fontWeight: 700, letterSpacing: 1 }}>{time}</span>
     </div>
   )
 }
@@ -128,7 +130,7 @@ function HealthTracker({ runningDelay, skippedCount }) {
   if (runningDelay >= 15 || skippedCount > 1) { emoji = "😢"; label = `Behind ${runningDelay}min`; color = "#f87171" }
   else if (runningDelay >= 1 || skippedCount === 1) { emoji = "😐"; label = `Slight delay ${runningDelay}min`; color = "#fbbf24" }
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, background: `${color}12`, border: `1px solid ${color}30`, borderRadius: 20, padding: "4px 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, background: `${color}10`, border: `1.5px solid ${color}40`, borderRadius: 20, padding: "4px 12px" }}>
       <span style={{ fontSize: 16 }}>{emoji}</span>
       <span style={{ color, fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>{label}</span>
     </div>
@@ -160,7 +162,7 @@ function StatusTag({ status, onChange }) {
         <span style={{ color: current?.color, fontSize: 9 }}>▼</span>
       </div>
       {open && (
-        <div style={{ position: "absolute", top: 30, left: 0, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 10, padding: 8, zIndex: 100, minWidth: 150, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+        <div style={{ position: "absolute", top: 30, left: 0, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, padding: 8, zIndex: 100, minWidth: 150, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
           {STATUS_OPTIONS.map(opt => (
             <div key={opt.label} onClick={(e) => { e.stopPropagation(); onChange(opt.label); setOpen(false) }}
               style={{ padding: "7px 10px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
@@ -180,55 +182,43 @@ function StatusTag({ status, onChange }) {
 function EventCard({ event, onStatusChange, onClick }) {
   return (
     <div onClick={onClick}
-      style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 20, cursor: "pointer", transition: "border-color 0.2s" }}
+      style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, cursor: "pointer", transition: "border-color 0.2s" }}
       onMouseEnter={e => e.currentTarget.style.borderColor = "#c084fc40"}
-      onMouseLeave={e => e.currentTarget.style.borderColor = "#1e2d40"}>
+      onMouseLeave={e => e.currentTarget.style.borderColor = "#e5e7eb"}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h3 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 16, margin: "0 0 4px" }}>{event.event_name}</h3>
-          <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{event.client_name}</p>
+          <h3 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 16, margin: "0 0 4px" }}>{event.event_name}</h3>
+          <p style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{event.client_name}</p>
         </div>
         <StatusTag status={event.status} onChange={(s) => onStatusChange(event.id, s)} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{event.event_date} · {event.venue}</p>
-        {event.hashtag && <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{event.hashtag}</p>}
+        <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{event.event_date} · {event.venue}</p>
+        {event.hashtag && <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{event.hashtag}</p>}
       </div>
     </div>
   )
 }
 
 // ── SUB EVENT CARD ────────────────────────────────────────────
-function SubEventCard({ sub, onClick, onDelete, showDelete }) {
+function SubEventCard({ sub, onClick }) {
   return (
     <div onClick={onClick}
-      style={{ background: "#0a0f18", border: `1px solid ${sub.color}30`, borderRadius: 10, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", transition: "border-color 0.2s" }}
+      style={{ background: "#ffffff", border: `1.5px solid ${sub.color}40`, borderRadius: 10, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", transition: "border-color 0.2s" }}
       onMouseEnter={e => e.currentTarget.style.borderColor = `${sub.color}60`}
       onMouseLeave={e => e.currentTarget.style.borderColor = `${sub.color}30`}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ width: 3, height: 40, borderRadius: 2, background: sub.color, flexShrink: 0 }} />
         <div>
-          <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 15, margin: "0 0 3px", fontWeight: 600 }}>{sub.label}</p>
-          <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{sub.venue} · Starts {sub.startTime}</p>
+          <p style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 15, margin: "0 0 3px", fontWeight: 600 }}>{sub.label}</p>
+          <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{sub.venue} · Starts {sub.startTime}</p>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ background: `${sub.color}18`, border: `1px solid ${sub.color}40`, borderRadius: 20, padding: "3px 12px", marginBottom: 4 }}>
-            <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>{sub.startTime}</span>
-          </div>
-          <p style={{ color: "#334155", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{(sub.items || []).length} items</p>
+      <div style={{ textAlign: "right" }}>
+        <div style={{ background: `${sub.color}18`, border: `1px solid ${sub.color}40`, borderRadius: 20, padding: "3px 12px", marginBottom: 4 }}>
+          <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>{sub.startTime}</span>
         </div>
-        {showDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              if (window.confirm(`Delete "${sub.label}" and all its timeline items?`)) onDelete(sub.id)
-            }}
-            style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 6, color: "#f87171", fontSize: 11, fontFamily: "Georgia", padding: "5px 10px", cursor: "pointer", flexShrink: 0 }}>
-            🗑 Delete
-          </button>
-        )}
+        <p style={{ color: "#6b7280", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{(sub.items || []).length} items</p>
       </div>
     </div>
   )
@@ -274,7 +264,7 @@ function ReconciliationBanner({ itemId, delayLogs, currentVendor, onApprove, onD
               Approve
             </button>
             <button onClick={() => pendingLogs.forEach(d => onDecline(d))}
-              style={{ background: "transparent", border: "1px solid #1e2d40", borderRadius: 5, color: "#475569", fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
+              style={{ background: "transparent", border: "1px solid #e5e7eb", borderRadius: 5, color: "#4b5563", fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
               Decline
             </button>
           </div>
@@ -295,25 +285,25 @@ function DelayLog({ itemId, delayLogs, currentVendor }) {
   const canSeeDetails = isCoord(currentVendor)
   return (
     <div style={{ marginTop: 8, borderTop: "1px solid #1e2d40", paddingTop: 8 }}>
-      <p style={{ color: "#334155", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 6px" }}>DELAY LOG</p>
+      <p style={{ color: "#6b7280", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 6px" }}>DELAY LOG</p>
       {logs.map((d, i) => {
         const statusColor = d.reconciliation_status === "approved" ? "#34d399"
           : d.reconciliation_status === "declined" ? "#475569"
           : d.reconciliation_status === "pending" ? "#fbbf24"
           : "#475569"
         return (
-          <div key={i} style={{ marginBottom: 6, padding: "6px 8px", background: "#07101a", borderRadius: 6, borderLeft: `2px solid ${statusColor}` }}>
+          <div key={i} style={{ marginBottom: 6, padding: "6px 8px", background: "#f1f0ed", borderRadius: 6, borderLeft: `2px solid ${statusColor}` }}>
             {canSeeDetails ? (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#f87171", fontSize: 11, fontFamily: "Georgia", fontWeight: 700 }}>+{d.delay_mins}min</span>
-                  <span style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia" }}>{fmtTimestamp(d.submitted_at)}</span>
+                  <span style={{ color: "#9ca3af", fontSize: 10, fontFamily: "Georgia" }}>{fmtTimestamp(d.submitted_at)}</span>
                 </div>
-                <p style={{ color: "#475569", fontSize: 11, fontFamily: "Georgia", margin: "2px 0 0" }}>
+                <p style={{ color: "#4b5563", fontSize: 11, fontFamily: "Georgia", margin: "2px 0 0" }}>
                   {d.reason} — <span style={{ color: "#60a5fa" }}>{d.vendor_name}</span>
                 </p>
                 {d.completed_at && (
-                  <p style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia", margin: "2px 0 0" }}>
+                  <p style={{ color: "#6b7280", fontSize: 10, fontFamily: "Georgia", margin: "2px 0 0" }}>
                     Completed {fmtTimestamp(d.completed_at)} · Actual: {d.actual_mins}min{" "}
                     <span style={{ color: statusColor }}>({d.reconciliation_status})</span>
                   </p>
@@ -324,7 +314,7 @@ function DelayLog({ itemId, delayLogs, currentVendor }) {
                 <span style={{ color: "#f87171", fontSize: 11, fontFamily: "Georgia" }}>
                   +{d.delay_mins}min delay — {d.vendor_name}
                 </span>
-                <span style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia" }}>{fmtTimestamp(d.submitted_at)}</span>
+                <span style={{ color: "#9ca3af", fontSize: 10, fontFamily: "Georgia" }}>{fmtTimestamp(d.submitted_at)}</span>
               </div>
             )}
           </div>
@@ -434,15 +424,15 @@ function ImportModal({ onClose, onImport }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 16, padding: 28, width: "100%", maxWidth: 560, maxHeight: "80vh", overflowY: "auto" }}>
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 28, width: "100%", maxWidth: 560, maxHeight: "80vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 20, margin: 0 }}>📄 Import Run-of-Show</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 20 }}>×</button>
+          <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 20, margin: 0 }}>📄 Import Run-of-Show</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 20 }}>×</button>
         </div>
 
         {stage === "upload" && (
           <div>
-            <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 13, margin: "0 0 16px" }}>
+            <p style={{ color: "#4b5563", fontFamily: "Georgia", fontSize: 13, margin: "0 0 16px" }}>
               Upload your run-of-show document to auto-create sub-events and timeline items.
             </p>
             <div style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
@@ -453,12 +443,12 @@ function ImportModal({ onClose, onImport }) {
             <div onClick={() => fileRef.current?.click()}
               style={{ border: "2px dashed #1e2d40", borderRadius: 12, padding: "40px 20px", textAlign: "center", cursor: "pointer", transition: "border-color 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = "#c084fc40"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = "#1e2d40"}>
-              <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 14, margin: "0 0 8px" }}>Click to upload</p>
-              <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>.txt or .pdf accepted</p>
+              onMouseLeave={e => e.currentTarget.style.borderColor = "#e5e7eb"}>
+              <p style={{ color: "#4b5563", fontFamily: "Georgia", fontSize: 14, margin: "0 0 8px" }}>Click to upload</p>
+              <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>.txt or .pdf accepted</p>
             </div>
             <input ref={fileRef} type="file" accept=".txt,.pdf" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
-            <p style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia", margin: "12px 0 0", textAlign: "center" }}>
+            <p style={{ color: "#6b7280", fontSize: 10, fontFamily: "Georgia", margin: "12px 0 0", textAlign: "center" }}>
               // TODO: Wire to Claude API via Supabase Edge Function
             </p>
           </div>
@@ -467,7 +457,7 @@ function ImportModal({ onClose, onImport }) {
         {stage === "parsing" && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <div style={{ width: 32, height: 32, border: "3px solid #c084fc", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 1s linear infinite" }} />
-            <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 14 }}>Parsing document...</p>
+            <p style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 14 }}>Parsing document...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         )}
@@ -478,29 +468,29 @@ function ImportModal({ onClose, onImport }) {
               ✅ Found {parsed.sub_events.length} sub-event{parsed.sub_events.length !== 1 ? "s" : ""} — review before importing
             </p>
             {parsed.sub_events.map((sub, si) => (
-              <div key={si} style={{ background: "#07101a", border: `1px solid ${sub.color}30`, borderRadius: 10, padding: 16, marginBottom: 12 }}>
+              <div key={si} style={{ background: "#f1f0ed", border: `1.5px solid ${sub.color}40`, borderRadius: 10, padding: 16, marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <div style={{ width: 3, height: 24, borderRadius: 2, background: sub.color }} />
                   <div>
-                    <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: 0, fontWeight: 600 }}>{sub.label}</p>
-                    <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 11, margin: 0 }}>{sub.venue} · {sub.startTime}</p>
+                    <p style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 14, margin: 0, fontWeight: 600 }}>{sub.label}</p>
+                    <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 11, margin: 0 }}>{sub.venue} · {sub.startTime}</p>
                   </div>
                 </div>
                 {(sub.items || []).map((item, ii) => (
                   <div key={ii} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #1e2d40" }}>
-                    <span style={{ color: "#475569", fontFamily: "Georgia", fontSize: 11, width: 80, flexShrink: 0 }}>{item.time}</span>
-                    <span style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 12 }}>{item.label}</span>
+                    <span style={{ color: "#4b5563", fontFamily: "Georgia", fontSize: 11, width: 80, flexShrink: 0 }}>{item.time}</span>
+                    <span style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 12 }}>{item.label}</span>
                   </div>
                 ))}
               </div>
             ))}
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={() => onImport(parsed)}
-                style={{ flex: 2, padding: "11px", background: "#c084fc", border: "none", borderRadius: 8, color: "#05080e", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia" }}>
+                style={{ flex: 2, padding: "11px", background: "#7c3aed", border: "none", borderRadius: 8, color: "#ffffff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia" }}>
                 Import All →
               </button>
               <button onClick={onClose}
-                style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #1e2d40", borderRadius: 8, color: "#475569", fontSize: 13, cursor: "pointer", fontFamily: "Georgia" }}>
+                style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #e5e7eb", borderRadius: 8, color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "Georgia" }}>
                 Cancel
               </button>
             </div>
@@ -512,7 +502,7 @@ function ImportModal({ onClose, onImport }) {
 }
 
 // ── VENDOR ITEM CARD ──────────────────────────────────────────
-function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEditItem, onDeleteItem, onApproveReconciliation, onDeclineReconciliation, delayLogs, isNow, itemRef }) {
+function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEditItem, onDeleteItem, onApproveReconciliation, onDeclineReconciliation, delayLogs, isNow, itemRef, isBackend }) {
   const [showDelayForm, setShowDelayForm] = useState(false)
   const [delayMins, setDelayMins] = useState(10)
   const [delayReason, setDelayReason] = useState("")
@@ -527,9 +517,10 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
   const [editNotes, setEditNotes] = useState(item.notes || "")
   const statusMenuRef = useRef(null)
 
-  const coordinator = isCoord(currentVendor)
-  const lead = isLead(currentVendor)
-  const assistant = isAssistant(currentVendor)
+  // isBackend=true means we're on the coordinator's backend dashboard — always grant full access
+  const coordinator = isBackend || isCoord(currentVendor)
+  const lead = isBackend || isLead(currentVendor)
+  const assistant = !isBackend && isAssistant(currentVendor)
   const currentStatus = ITEM_STATUSES.find(s => s.key === (item.itemStatus || "upcoming"))
   const hasDelay = item.adjustedStart && item.startTime && item.adjustedStart !== item.startTime
   const itemDelayLogs = delayLogs[String(item.id)] || []
@@ -571,7 +562,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
     : hasPendingReconciliation ? "#fbbf24"
     : item.itemStatus === "delayed" ? "rgba(248,113,113,0.3)"
     : item.itemStatus === "completed" || item.itemStatus === "early" ? "rgba(52,211,153,0.3)"
-    : "#1e2d40"
+    : "#e5e7eb"
   const boxShadow = isNow ? "0 0 0 2px #c084fc40, 0 0 16px #c084fc20" : "none"
 
   return (
@@ -581,7 +572,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
         <div style={{ color: hasDelay ? "#f87171" : "#475569", fontFamily: "Georgia", fontSize: 12 }}>
           {item.adjustedStart || item.startTime || item.time}
         </div>
-        {item.adjustedEnd && <div style={{ color: "#334155", fontFamily: "Georgia", fontSize: 10 }}>→ {item.adjustedEnd}</div>}
+        {item.adjustedEnd && <div style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 10 }}>→ {item.adjustedEnd}</div>}
         {hasDelay && <div style={{ color: "#f87171", fontSize: 9, fontFamily: "Georgia" }}>+{item.delayMins}min</div>}
       </div>
 
@@ -591,33 +582,33 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
       </div>
 
       {/* Card */}
-      <div style={{ flex: 1, background: "#0a0f18", border: `1px solid ${borderColor}`, borderRadius: 8, overflow: "visible", boxShadow, transition: "box-shadow 0.3s, border-color 0.3s" }}>
+      <div style={{ flex: 1, background: "#ffffff", border: `1px solid ${borderColor}`, borderRadius: 8, overflow: "visible", boxShadow, transition: "box-shadow 0.3s, border-color 0.3s" }}>
         {isNow && (
-          <div style={{ background: "rgba(192,132,252,0.08)", borderBottom: "1px solid rgba(192,132,252,0.2)", padding: "3px 12px" }}>
-            <span style={{ color: "#c084fc", fontSize: 9, fontFamily: "Georgia", letterSpacing: 2 }}>📍 HAPPENING NOW</span>
+          <div style={{ background: "rgba(124,58,237,0.06)", borderBottom: "1px solid rgba(124,58,237,0.15)", padding: "3px 12px" }}>
+            <span style={{ color: "#7c3aed", fontSize: 9, fontFamily: "Georgia", letterSpacing: 2 }}>📍 HAPPENING NOW</span>
           </div>
         )}
         <div style={{ padding: "10px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
-              <p style={{ color: item.itemStatus === "skipped" ? "#334155" : "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: "0 0 2px", fontWeight: 600, textDecoration: item.itemStatus === "skipped" ? "line-through" : "none" }}>
+              <p style={{ color: item.itemStatus === "skipped" ? "#9ca3af" : "#111827", fontFamily: "Georgia", fontSize: 14, margin: "0 0 2px", fontWeight: 600, textDecoration: item.itemStatus === "skipped" ? "line-through" : "none" }}>
                 {currentStatus?.emoji} {item.label}
               </p>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ background: `${item.subColor}15`, border: `1px solid ${item.subColor}30`, borderRadius: 4, padding: "1px 7px", color: item.subColor, fontSize: 9, fontFamily: "Georgia", letterSpacing: 1 }}>{item.subLabel}</span>
-                {item.endTime && <span style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia" }}>{item.time} – {item.endTime}</span>}
+                {item.endTime && <span style={{ color: "#6b7280", fontSize: 10, fontFamily: "Georgia" }}>{item.time} – {item.endTime}</span>}
               </div>
             </div>
 
             {/* Status dropdown */}
             <div ref={statusMenuRef} style={{ position: "relative" }}>
               <button onClick={() => setShowStatusMenu(o => !o)} style={{
-                background: `${currentStatus?.color}15`, border: `1px solid ${currentStatus?.color}40`,
+                background: `${currentStatus?.color}12`, border: `1.5px solid ${currentStatus?.color}50`,
                 borderRadius: 6, color: currentStatus?.color, fontSize: 10,
                 fontFamily: "Georgia", padding: "3px 8px", cursor: "pointer", letterSpacing: 1
               }}>{currentStatus?.label} ▼</button>
               {showStatusMenu && (
-                <div style={{ position: "absolute", right: 0, top: 28, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 8, padding: 6, zIndex: 100, minWidth: 130, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                <div style={{ position: "absolute", right: 0, top: 28, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, padding: 6, zIndex: 100, minWidth: 130, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
                   {availableStatuses.map(s => (
                     <div key={s.key} onClick={() => handleStatusSelect(s.key)}
                       style={{ padding: "6px 8px", borderRadius: 5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
@@ -633,41 +624,59 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
           </div>
 
           {item.notes && !isEditing && (
-            <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 12, margin: "4px 0 8px", lineHeight: 1.6 }}>{item.notes}</p>
+            <p style={{ color: "#374151", fontFamily: "Georgia", fontSize: 13, margin: "4px 0 8px", lineHeight: 1.7 }}>{item.notes}</p>
           )}
 
           {isEditing && (
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: "#475569", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>START TIME</label>
+                  <label style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>START TIME</label>
                   <input value={editTime} onChange={e => setEditTime(e.target.value)}
-                    style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ color: "#475569", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>END TIME</label>
+                  <label style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>END TIME</label>
                   <input value={editEndTime} onChange={e => setEditEndTime(e.target.value)}
-                    style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                 </div>
               </div>
               <div>
-                <label style={{ color: "#475569", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>ACTIVITY</label>
+                <label style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>ACTIVITY</label>
                 <input value={editLabel} onChange={e => setEditLabel(e.target.value)}
-                  style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                  style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
               </div>
               <div>
-                <label style={{ color: "#475569", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>PARTIES INVOLVED</label>
-                <input value={editInvolved} onChange={e => setEditInvolved(e.target.value)}
-                  style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                <label style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>PARTIES INVOLVED</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                  {VENDOR_ROLES.map(role => {
+                    const currentList = editInvolved.split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+                    const selected = currentList.includes(role.label.toLowerCase())
+                    return (
+                      <button key={role.key} type="button" onClick={() => {
+                        const current = editInvolved.split(",").map(s => s.trim()).filter(Boolean)
+                        const idx = current.findIndex(c => c.toLowerCase() === role.label.toLowerCase())
+                        if (idx >= 0) { current.splice(idx, 1) } else { current.push(role.label) }
+                        setEditInvolved(current.join(", "))
+                      }} style={{
+                        padding: "4px 10px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 10,
+                        background: selected ? role.color : "#ffffff",
+                        border: `1.5px solid ${selected ? role.color : "#d1d5db"}`,
+                        color: selected ? "#ffffff" : "#374151",
+                        fontWeight: selected ? 700 : 400, transition: "all 0.15s"
+                      }}>{role.label}</button>
+                    )
+                  })}
+                </div>
               </div>
               <div>
-                <label style={{ color: "#475569", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>NOTES</label>
+                <label style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, display: "block", marginBottom: 4, fontFamily: "Georgia" }}>NOTES</label>
                 <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={3}
-                  style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", resize: "vertical" }} />
+                  style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", resize: "vertical" }} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={handleSaveEdit} style={{ flex: 2, padding: "8px", background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#c084fc", fontSize: 12, fontFamily: "Georgia", cursor: "pointer", fontWeight: 700 }}>Save Changes</button>
-                <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: "8px", background: "transparent", border: "1px solid #1e2d40", borderRadius: 6, color: "#475569", fontSize: 12, fontFamily: "Georgia", cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleSaveEdit} style={{ flex: 2, padding: "8px", background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#7c3aed", fontSize: 12, fontFamily: "Georgia", cursor: "pointer", fontWeight: 700 }}>Save Changes</button>
+                <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: "8px", background: "transparent", border: "1px solid #e5e7eb", borderRadius: 6, color: "#4b5563", fontSize: 12, fontFamily: "Georgia", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
           )}
@@ -675,9 +684,9 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
             {item.itemStatus !== "skipped" && item.itemStatus !== "completed" && item.itemStatus !== "early" && (
               <button onClick={() => setShowDelayForm(!showDelayForm)} style={{
-                background: showDelayForm ? "#1e2d40" : "rgba(248,113,113,0.08)",
-                border: `1px solid ${showDelayForm ? "#1e2d40" : "rgba(248,113,113,0.25)"}`,
-                borderRadius: 5, color: showDelayForm ? "#475569" : "#f87171",
+                background: showDelayForm ? "#f3f4f6" : "rgba(248,113,113,0.06)",
+                border: `1px solid ${showDelayForm ? "#d1d5db" : "rgba(248,113,113,0.4)"}`,
+                borderRadius: 5, color: showDelayForm ? "#6b7280" : "#ef4444",
                 fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer"
               }}>{showDelayForm ? "Cancel" : "⏱ Log Delay"}</button>
             )}
@@ -685,7 +694,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
             {coordinator && (
               <>
                 <button onClick={() => { setIsEditing(!isEditing); setShowDelayForm(false) }}
-                  style={{ background: isEditing ? "#1e2d40" : "rgba(96,165,250,0.08)", border: `1px solid ${isEditing ? "#1e2d40" : "rgba(96,165,250,0.25)"}`, borderRadius: 5, color: isEditing ? "#475569" : "#60a5fa", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
+                  style={{ background: isEditing ? "#f3f4f6" : "rgba(37,99,235,0.06)", border: `1px solid ${isEditing ? "#e5e7eb" : "rgba(37,99,235,0.25)"}`, borderRadius: 5, color: isEditing ? "#6b7280" : "#2563eb", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
                   {isEditing ? "Cancel Edit" : "✏ Edit"}
                 </button>
                 {lead && (
@@ -699,7 +708,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
 
             {itemDelayLogs.length > 0 && (
               <button onClick={() => setShowDelayLog(!showDelayLog)}
-                style={{ background: "transparent", border: "1px solid #1e2d40", borderRadius: 5, color: "#475569", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer", marginLeft: "auto" }}>
+                style={{ background: "transparent", border: "1px solid #e5e7eb", borderRadius: 5, color: "#4b5563", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer", marginLeft: "auto" }}>
                 {showDelayLog ? "Hide Log" : `📋 ${itemDelayLogs.length} Delay${itemDelayLogs.length > 1 ? "s" : ""}`}
               </button>
             )}
@@ -718,21 +727,21 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
         </div>
 
         {showDelayForm && (
-          <div style={{ borderTop: "1px solid #1e2d40", padding: "12px 14px", background: "#07101a" }}>
-            <p style={{ color: "#475569", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 10px" }}>LOG A DELAY</p>
+          <div style={{ borderTop: "1px solid #e5e7eb", padding: "12px 14px", background: "#fafafa" }}>
+            <p style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 10px" }}>LOG A DELAY</p>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               {[5, 10, 15, 20, 30, 45, 60].map(m => (
                 <button key={m} onClick={() => setDelayMins(m)} style={{
                   padding: "5px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "Georgia",
-                  background: delayMins === m ? "rgba(248,113,113,0.15)" : "#05080e",
-                  border: `1px solid ${delayMins === m ? "#f87171" : "#1e2d40"}`,
-                  color: delayMins === m ? "#f87171" : "#475569", fontSize: 12
+                  background: delayMins === m ? "rgba(248,113,113,0.12)" : "#ffffff",
+                  border: `1.5px solid ${delayMins === m ? "#f87171" : "#d1d5db"}`,
+                  color: delayMins === m ? "#f87171" : "#6b7280", fontSize: 12
                 }}>{m}m</button>
               ))}
             </div>
             <input value={delayReason} onChange={e => { setDelayReason(e.target.value); setDelayReasonError(false) }}
               placeholder="Reason required e.g. Family running late..."
-              style={{ width: "100%", background: "#05080e", border: `1px solid ${delayReasonError ? "#f87171" : "#1e2d40"}`, borderRadius: 6, color: "#e2e8f0", fontSize: 12, padding: "8px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", marginBottom: delayReasonError ? 4 : 8 }} />
+              style={{ width: "100%", background: "#f8f7f4", border: `1px solid ${delayReasonError ? "#f87171" : "#e5e7eb"}`, borderRadius: 6, color: "#1a1a2e", fontSize: 12, padding: "8px 10px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", marginBottom: delayReasonError ? 4 : 8 }} />
             {delayReasonError && <p style={{ color: "#f87171", fontSize: 11, fontFamily: "Georgia", margin: "0 0 8px" }}>A reason is required before submitting.</p>}
             <button onClick={handleSubmitDelay}
               style={{ width: "100%", padding: "8px", background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 6, color: "#f87171", fontSize: 12, fontFamily: "Georgia", cursor: "pointer", fontWeight: 700 }}>
@@ -923,15 +932,7 @@ export default function App() {
     setSubLabel(""); setSubVenue(""); setSubStartTime(""); setSubColor("#c084fc")
     setShowSubEventForm(false)
   }
-  const handleDeleteSubEvent = async (subId) => {
-    if (!selectedEvent) return
-    const updatedSubEvents = (selectedEvent.sub_events || []).filter(s => String(s.id) !== String(subId))
-    const { error } = await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", selectedEvent.id)
-    if (!error) {
-      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e))
-      setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
-    }
-  }
+
   // Import run-of-show: append parsed sub_events to existing event
   const handleImportRunOfShow = async (parsed) => {
     if (!selectedEvent) return
@@ -1233,7 +1234,7 @@ export default function App() {
   }
 
   // ── SHARED ITEM LIST RENDERER ─────────────────────────────────
-  const renderItemList = (items, showFilter = false) => {
+  const renderItemList = (items, showFilter = false, isBackend = false) => {
     // Re-read time fresh each render — highlighting stays current
     const now = nowInMins()
     const sorted = [...items].sort((a, b) => parseTimeToMins(a.startTime || a.time) - parseTimeToMins(b.startTime || b.time))
@@ -1272,13 +1273,13 @@ export default function App() {
               <button key={f} onClick={() => setVendorFilter(f)} style={{
                 padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11,
                 background: vendorFilter === f ? "rgba(192,132,252,0.18)" : "transparent",
-                border: `1px solid ${vendorFilter === f ? "#c084fc" : "#1e2d40"}`,
+                border: `1px solid ${vendorFilter === f ? "#c084fc" : "#e5e7eb"}`,
                 color: vendorFilter === f ? "#c084fc" : "#475569"
               }}>{f}</button>
             ))}
             {nowItemId && (
               <button onClick={() => nowItemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc", marginLeft: "auto" }}>
+                style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#7c3aed", marginLeft: "auto" }}>
                 📍 Jump to Now
               </button>
             )}
@@ -1287,30 +1288,46 @@ export default function App() {
         {!showFilter && nowItemId && (
           <div style={{ marginBottom: 12 }}>
             <button onClick={() => nowItemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc" }}>
+              style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#7c3aed" }}>
               📍 Jump to Now
             </button>
           </div>
         )}
-        {filtered.map(item => {
-          const isNow = String(item.id) === String(nowItemId)
-          return (
-            <VendorItemCard
-              key={item.id}
-              item={item}
-              currentVendor={currentVendor}
-              onLogDelay={handleLogDelay}
-              onStatusChange={handleItemStatusChange}
-              onEditItem={handleEditItem}
-              onDeleteItem={handleDeleteItem}
-              onApproveReconciliation={handleApproveReconciliation}
-              onDeclineReconciliation={handleDeclineReconciliation}
-              delayLogs={delayLogs}
-              isNow={isNow}
-              itemRef={isNow ? nowItemRef : null}
-            />
-          )
-        })}
+        {(() => {
+          // Group items by subLabel to insert dividers between sub-events
+          let lastSubLabel = null
+          return filtered.map(item => {
+            const isNow = String(item.id) === String(nowItemId)
+            const showDivider = item.subLabel && item.subLabel !== lastSubLabel
+            lastSubLabel = item.subLabel
+            return (
+              <div key={item.id}>
+                {showDivider && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0 14px" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.subColor, flexShrink: 0, marginLeft: 97 }} />
+                    <div style={{ flex: 1, height: 1, background: item.subColor, opacity: 0.3 }} />
+                    <span style={{ color: item.subColor, fontFamily: "Georgia", fontSize: 11, fontWeight: 700, letterSpacing: 2, whiteSpace: "nowrap", textTransform: "uppercase" }}>{item.subLabel}</span>
+                    <div style={{ flex: 1, height: 1, background: item.subColor, opacity: 0.3 }} />
+                  </div>
+                )}
+                <VendorItemCard
+                  item={item}
+                  currentVendor={currentVendor}
+                  onLogDelay={handleLogDelay}
+                  onStatusChange={handleItemStatusChange}
+                  onEditItem={handleEditItem}
+                  onDeleteItem={handleDeleteItem}
+                  onApproveReconciliation={handleApproveReconciliation}
+                  onDeclineReconciliation={handleDeclineReconciliation}
+                  delayLogs={delayLogs}
+                  isNow={isNow}
+                  itemRef={isNow ? nowItemRef : null}
+                  isBackend={isBackend}
+                />
+              </div>
+            )
+          })
+        })()}
       </>
     )
   }
@@ -1318,22 +1335,22 @@ export default function App() {
   // ── SCREEN: VENDOR JOIN ───────────────────────────────────────
   if (screen === "vendor-join" && vendorEvent) {
     return (
-      <div style={{ background: "#05080e", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#f8f7f4", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ width: "100%", maxWidth: 440 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ display: "inline-block", background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", borderRadius: 8, padding: "6px 16px", marginBottom: 16 }}>
-              <span style={{ color: "#c084fc", fontSize: 11, letterSpacing: 2 }}>YOU'RE INVITED</span>
+              <span style={{ color: "#7c3aed", fontSize: 11, letterSpacing: 2 }}>YOU'RE INVITED</span>
             </div>
-            <h1 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 28, margin: "0 0 6px" }}>{vendorEvent.event_name}</h1>
-            <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 15, margin: "0 0 4px" }}>{vendorEvent.client_name}</p>
-            <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{vendorEvent.event_date} · {vendorEvent.venue}</p>
+            <h1 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 28, margin: "0 0 6px" }}>{vendorEvent.event_name}</h1>
+            <p style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 15, margin: "0 0 4px" }}>{vendorEvent.client_name}</p>
+            <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{vendorEvent.event_date} · {vendorEvent.venue}</p>
           </div>
-          <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 16, padding: 28 }}>
+          <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 28 }}>
             {!selectedVendorForPin ? (
               <>
-                <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>SELECT YOUR NAME</p>
+                <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>SELECT YOUR NAME</p>
                 {eventVendors.length === 0 ? (
-                  <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No vendors added yet. Contact your coordinator.</p>
+                  <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No vendors added yet. Contact your coordinator.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {eventVendors.map(v => {
@@ -1341,9 +1358,9 @@ export default function App() {
                       const tierLabel = v.coordinator_tier === "lead" ? "Lead Coordinator" : v.coordinator_tier === "assistant" ? "Assistant Coordinator" : null
                       return (
                         <button key={v.id} onClick={() => { setSelectedVendorForPin(v); setPinInput(""); setPinError("") }}
-                          style={{ padding: "12px 16px", borderRadius: 10, cursor: "pointer", background: "#05080e", border: `1px solid ${role?.color || "#1e2d40"}20`, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Georgia" }}>
+                          style={{ padding: "12px 16px", borderRadius: 10, cursor: "pointer", background: "#f8f7f4", border: `1px solid ${role?.color || "#e5e7eb"}20`, display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Georgia" }}>
                           <div style={{ textAlign: "left" }}>
-                            <p style={{ color: "#e2e8f0", fontSize: 14, margin: "0 0 2px" }}>{v.name}</p>
+                            <p style={{ color: "#1a1a2e", fontSize: 14, margin: "0 0 2px" }}>{v.name}</p>
                             <p style={{ color: role?.color || "#475569", fontSize: 11, margin: 0 }}>{tierLabel || role?.label}</p>
                           </div>
                           {v.checked_in && <span style={{ color: "#34d399", fontSize: 11 }}>✓ Checked in</span>}
@@ -1355,19 +1372,19 @@ export default function App() {
               </>
             ) : (
               <>
-                <button onClick={() => { setSelectedVendorForPin(null); setPinError("") }} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 16 }}>← Back</button>
-                <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 16, margin: "0 0 4px" }}>{selectedVendorForPin.name}</p>
+                <button onClick={() => { setSelectedVendorForPin(null); setPinError("") }} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 16 }}>← Back</button>
+                <p style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 16, margin: "0 0 4px" }}>{selectedVendorForPin.name}</p>
                 <p style={{ color: VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.color, fontFamily: "Georgia", fontSize: 12, margin: "0 0 20px" }}>
                   {selectedVendorForPin.coordinator_tier === "lead" ? "Lead Coordinator"
                     : selectedVendorForPin.coordinator_tier === "assistant" ? "Assistant Coordinator"
                     : VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.label}
                 </p>
-                <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>ENTER YOUR PIN</label>
+                <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>ENTER YOUR PIN</label>
                 <input type="password" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePinJoin()}
                   placeholder="••••" maxLength={6}
-                  style={{ width: "100%", background: "#05080e", border: `1px solid ${pinError ? "#f87171" : "#1e2d40"}`, borderRadius: 8, color: "#e2e8f0", fontSize: 18, padding: "12px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", textAlign: "center", letterSpacing: 6, marginBottom: 8 }} />
+                  style={{ width: "100%", background: "#f8f7f4", border: `1px solid ${pinError ? "#f87171" : "#e5e7eb"}`, borderRadius: 8, color: "#1a1a2e", fontSize: 18, padding: "12px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", textAlign: "center", letterSpacing: 6, marginBottom: 8 }} />
                 {pinError && <p style={{ color: "#f87171", fontSize: 12, fontFamily: "Georgia", margin: "0 0 8px" }}>{pinError}</p>}
-                <button onClick={handlePinJoin} style={{ width: "100%", padding: "13px", background: pinInput ? "#c084fc" : "#1e2d40", border: "none", borderRadius: 8, color: pinInput ? "#05080e" : "#334155", fontSize: 15, fontWeight: 700, cursor: pinInput ? "pointer" : "default", fontFamily: "Georgia" }}>Join Event →</button>
+                <button onClick={handlePinJoin} style={{ width: "100%", padding: "13px", background: pinInput ? "#7c3aed" : "#e5e7eb", border: "none", borderRadius: 8, color: pinInput ? "#ffffff" : "#9ca3af", fontSize: 15, fontWeight: 700, cursor: pinInput ? "pointer" : "default", fontFamily: "Georgia" }}>Join Event →</button>
               </>
             )}
           </div>
@@ -1392,7 +1409,7 @@ export default function App() {
     const skippedCount = allItems.filter(i => i.itemStatus === "skipped").length
 
     return (
-      <div style={{ background: "#05080e", minHeight: "100vh", padding: 24, paddingTop: notifications.length > 0 ? 60 : 24 }}>
+      <div style={{ background: "#f8f7f4", minHeight: "100vh", padding: 24, paddingTop: notifications.length > 0 ? 60 : 24 }}>
         <NotificationBanner />
         <div style={{ maxWidth: 680, margin: "0 auto" }}>
 
@@ -1404,18 +1421,18 @@ export default function App() {
             )}
           </div>
 
-          <div style={{ background: "#0a0f18", border: `1px solid ${currentVendor.color}30`, borderRadius: 12, padding: 16, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "#ffffff", border: `1px solid ${currentVendor.color}30`, borderRadius: 12, padding: 16, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: "0 0 2px" }}>{vendorEvent.event_name}</h2>
-              <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{vendorEvent.event_date} · {vendorEvent.venue}</p>
+              <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: "0 0 2px" }}>{vendorEvent.event_name}</h2>
+              <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{vendorEvent.event_date} · {vendorEvent.venue}</p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ background: `${currentVendor.color}18`, border: `1px solid ${currentVendor.color}40`, borderRadius: 20, padding: "6px 14px", marginBottom: 6 }}>
+              <div style={{ background: `${currentVendor.color}10`, border: `1.5px solid ${currentVendor.color}50`, borderRadius: 12, padding: "6px 14px", marginBottom: 6 }}>
                 <p style={{ color: currentVendor.color, fontSize: 12, fontFamily: "Georgia", margin: "0 0 1px", fontWeight: 700 }}>{currentVendor.name}</p>
                 <p style={{ color: currentVendor.color, fontSize: 10, fontFamily: "Georgia", margin: 0, opacity: 0.7 }}>{currentVendor.label}</p>
               </div>
               <button onClick={() => { localStorage.removeItem(`eventflow_vendor_${vendorEvent.id}`); setCurrentVendor(null); setScreen("vendor-join") }}
-                style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 11, padding: 0 }}>Not you?</button>
+                style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 11, padding: 0 }}>Not you?</button>
             </div>
           </div>
 
@@ -1425,23 +1442,23 @@ export default function App() {
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
             {(vendorEvent.sub_events || []).map(sub => (
-              <div key={sub.id} style={{ background: `${sub.color}15`, border: `1px solid ${sub.color}30`, borderRadius: 20, padding: "4px 12px" }}>
+              <div key={sub.id} style={{ background: `${sub.color}15`, border: `1.5px solid ${sub.color}40`, borderRadius: 20, padding: "4px 12px" }}>
                 <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia" }}>{sub.label}</span>
               </div>
             ))}
           </div>
 
-          <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>
+          <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>
             {coordinator ? "ALL ITEMS" : "YOUR ITEMS"} — {myItems.length} tasks
           </p>
 
           {myItems.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12 }}>
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>
               No items assigned to {currentVendor.label} yet.
             </div>
           ) : (
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#1e2d40" }} />
+              <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#e5e7eb" }} />
               {/* showFilter=true only for non-coordinator vendors */}
               {renderItemList(myItems, !coordinator)}
             </div>
@@ -1454,12 +1471,12 @@ export default function App() {
   // ── SCREEN: CREATE EVENT ──────────────────────────────────────
   if (screen === "create") {
     return (
-      <div style={{ background: "#05080e", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ width: "100%", maxWidth: 480, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 16, padding: 32 }}>
+      <div style={{ background: "#f8f7f4", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ width: "100%", maxWidth: 480, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 32 }}>
           <div style={{ marginBottom: 32 }}>
-            <button onClick={() => setScreen("dashboard")} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 16 }}>← Back</button>
-            <h1 style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 28, margin: "0 0 6px" }}>New Event</h1>
-            <p style={{ color: "#334155", fontSize: 13, margin: 0, fontFamily: "Georgia" }}>Fill in the details to get started</p>
+            <button onClick={() => setScreen("dashboard")} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 16 }}>← Back</button>
+            <h1 style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 28, margin: "0 0 6px" }}>New Event</h1>
+            <p style={{ color: "#6b7280", fontSize: 13, margin: 0, fontFamily: "Georgia" }}>Fill in the details to get started</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {[
@@ -1469,17 +1486,17 @@ export default function App() {
               { label: "HASHTAG", value: hashtag, setter: setHashtag, placeholder: "e.g. #ForeverJoseph" },
             ].map(field => (
               <div key={field.label}>
-                <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{field.label}</label>
+                <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{field.label}</label>
                 <input value={field.value} onChange={e => field.setter(e.target.value)} placeholder={field.placeholder}
-                  style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                  style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
               </div>
             ))}
             <div>
-              <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>EVENT DATE *</label>
+              <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>EVENT DATE *</label>
               <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)}
-                style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
             </div>
-            <button onClick={handleCreate} style={{ marginTop: 8, width: "100%", padding: "13px", background: eventName && clientName && eventDate ? "#c084fc" : "#1e2d40", border: "none", borderRadius: 8, color: eventName && clientName && eventDate ? "#05080e" : "#334155", fontSize: 15, fontWeight: 700, cursor: eventName && clientName && eventDate ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Create Event →</button>
+            <button onClick={handleCreate} style={{ marginTop: 8, width: "100%", padding: "13px", background: eventName && clientName && eventDate ? "#c084fc" : "#e5e7eb", border: "none", borderRadius: 8, color: eventName && clientName && eventDate ? "#ffffff" : "#9ca3af", fontSize: 15, fontWeight: 700, cursor: eventName && clientName && eventDate ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Create Event →</button>
           </div>
         </div>
       </div>
@@ -1490,25 +1507,25 @@ export default function App() {
   if (selectedSub && selectedEvent) {
     const skippedCount = (selectedSub.items || []).filter(i => i.itemStatus === "skipped").length
     return (
-      <div style={{ background: "#05080e", minHeight: "100vh", padding: 32, paddingTop: notifications.length > 0 ? 72 : 32 }}>
+      <div style={{ background: "#f8f7f4", minHeight: "100vh", padding: 32, paddingTop: notifications.length > 0 ? 72 : 32 }}>
         <NotificationBanner />
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
 
           {/* Clock row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => setSelectedSub(null)} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← {selectedEvent.event_name}</button>
-              <span style={{ color: "#1e2d40", fontSize: 13 }}>/</span>
+              <button onClick={() => setSelectedSub(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← {selectedEvent.event_name}</button>
+              <span style={{ color: "#d1d5db", fontSize: 13 }}>/</span>
               <span style={{ color: selectedSub.color, fontFamily: "Georgia", fontSize: 13 }}>{selectedSub.label}</span>
             </div>
             <LiveClock />
           </div>
 
-          <div style={{ background: "#0a0f18", borderLeft: `4px solid ${selectedSub.color}`, border: `1px solid ${selectedSub.color}30`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
+          <div style={{ background: "#ffffff", borderLeft: `4px solid ${selectedSub.color}`, border: `1px solid ${selectedSub.color}30`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
-                <h1 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 24, margin: "0 0 6px" }}>{selectedSub.label}</h1>
-                <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{selectedSub.venue} · Starts {selectedSub.startTime}</p>
+                <h1 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 24, margin: "0 0 6px" }}>{selectedSub.label}</h1>
+                <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{selectedSub.venue} · Starts {selectedSub.startTime}</p>
               </div>
               <div style={{ background: `${selectedSub.color}18`, border: `1px solid ${selectedSub.color}40`, borderRadius: 20, padding: "4px 14px" }}>
                 <span style={{ color: selectedSub.color, fontSize: 12, fontFamily: "Georgia", letterSpacing: 1 }}>{selectedSub.startTime}</span>
@@ -1522,58 +1539,79 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR SHARE LINK</p>
-              <p style={{ color: "#334155", fontSize: 12, fontFamily: "Georgia", margin: 0 }}>{window.location.origin}/?event={selectedEvent.id}</p>
+              <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR SHARE LINK</p>
+              <p style={{ color: "#6b7280", fontSize: 12, fontFamily: "Georgia", margin: 0 }}>{window.location.origin}/?event={selectedEvent.id}</p>
             </div>
             <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?event=${selectedEvent.id}`); alert("Link copied!") }}
-              style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#c084fc", fontSize: 11, fontFamily: "Georgia", padding: "6px 12px", cursor: "pointer" }}>Copy Link</button>
+              style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#7c3aed", fontSize: 11, fontFamily: "Georgia", padding: "6px 12px", cursor: "pointer" }}>Copy Link</button>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Timeline</h2>
-            <button onClick={() => setShowItemForm(!showItemForm)} style={{ background: showItemForm ? "#1e2d40" : selectedSub.color, border: "none", borderRadius: 8, color: showItemForm ? "#475569" : "#05080e", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
+            <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Timeline</h2>
+            <button onClick={() => setShowItemForm(!showItemForm)} style={{ background: showItemForm ? "#e5e7eb" : selectedSub.color, border: "none", borderRadius: 8, color: showItemForm ? "#6b7280" : "#ffffff", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
               {showItemForm ? "Cancel" : "+ Add Item"}
             </button>
           </div>
 
           {showItemForm && (
-            <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-              <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>NEW TIMELINE ITEM</p>
+            <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+              <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>NEW TIMELINE ITEM</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", gap: 12 }}>
                   {[{ label: "START TIME *", value: itemTime, setter: setItemTime, placeholder: "e.g. 9:00 AM" }, { label: "END TIME", value: itemEndTime, setter: setItemEndTime, placeholder: "e.g. 9:15 AM" }].map(f => (
                     <div key={f.label} style={{ flex: 1 }}>
-                      <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{f.label}</label>
+                      <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{f.label}</label>
                       <input value={f.value} onChange={e => f.setter(e.target.value)} placeholder={f.placeholder}
-                        style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                        style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                     </div>
                   ))}
                 </div>
-                {[{ label: "ACTIVITY *", value: itemLabel, setter: setItemLabel, placeholder: "e.g. Guest Arrival & Seating" }, { label: "PARTIES INVOLVED", value: itemInvolved, setter: setItemInvolved, placeholder: "e.g. Coordinator, DJ, MC" }].map(f => (
-                  <div key={f.label}>
-                    <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{f.label}</label>
-                    <input value={f.value} onChange={e => f.setter(e.target.value)} placeholder={f.placeholder}
-                      style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
-                  </div>
-                ))}
                 <div>
-                  <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>NOTES</label>
-                  <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} placeholder="Any instructions, cues, or details..."
-                    style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", resize: "vertical", minHeight: 72 }} />
+                  <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>ACTIVITY *</label>
+                  <input value={itemLabel} onChange={e => setItemLabel(e.target.value)} placeholder="e.g. Guest Arrival & Seating"
+                    style={{ width: "100%", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                 </div>
-                <button onClick={handleAddItem} style={{ width: "100%", padding: "11px", background: itemTime && itemLabel ? selectedSub.color : "#1e2d40", border: "none", borderRadius: 8, color: itemTime && itemLabel ? "#05080e" : "#334155", fontSize: 13, fontWeight: 700, cursor: itemTime && itemLabel ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Add to Timeline →</button>
+                <div>
+                  <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>PARTIES INVOLVED</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {VENDOR_ROLES.map(role => {
+                      const currentList = itemInvolved.split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+                      const selected = currentList.includes(role.label.toLowerCase())
+                      return (
+                        <button key={role.key} type="button" onClick={() => {
+                          const current = itemInvolved.split(",").map(s => s.trim()).filter(Boolean)
+                          const idx = current.findIndex(c => c.toLowerCase() === role.label.toLowerCase())
+                          if (idx >= 0) { current.splice(idx, 1) } else { current.push(role.label) }
+                          setItemInvolved(current.join(", "))
+                        }} style={{
+                          padding: "5px 13px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11,
+                          background: selected ? role.color : "#ffffff",
+                          border: `1.5px solid ${selected ? role.color : "#d1d5db"}`,
+                          color: selected ? "#ffffff" : "#374151",
+                          fontWeight: selected ? 700 : 400, transition: "all 0.15s"
+                        }}>{role.label}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>NOTES</label>
+                  <textarea value={itemNotes} onChange={e => setItemNotes(e.target.value)} placeholder="Any instructions, cues, or details..."
+                    style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box", resize: "vertical", minHeight: 72 }} />
+                </div>
+                <button onClick={handleAddItem} style={{ width: "100%", padding: "11px", background: itemTime && itemLabel ? selectedSub.color : "#e5e7eb", border: "none", borderRadius: 8, color: itemTime && itemLabel ? "#ffffff" : "#9ca3af", fontSize: 13, fontWeight: 700, cursor: itemTime && itemLabel ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Add to Timeline →</button>
               </div>
             </div>
           )}
 
           {(!selectedSub.items || selectedSub.items.length === 0) ? (
-            <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12 }}>No timeline items yet.</div>
+            <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>No timeline items yet.</div>
           ) : (
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#1e2d40" }} />
-              {renderItemList(selectedSub.items.map(item => ({ ...item, subLabel: selectedSub.label, subColor: selectedSub.color })), false)}
+              <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#e5e7eb" }} />
+              {renderItemList(selectedSub.items.map(item => ({ ...item, subLabel: selectedSub.label, subColor: selectedSub.color })), false, true)}
             </div>
           )}
         </div>
@@ -1584,7 +1622,7 @@ export default function App() {
   // ── SCREEN: EVENT DETAIL ──────────────────────────────────────
   if (selectedEvent) {
     return (
-      <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
+      <div style={{ background: "#f8f7f4", minHeight: "100vh", padding: 32 }}>
         <NotificationBanner />
         {showImportModal && (
           <ImportModal onClose={() => setShowImportModal(false)} onImport={handleImportRunOfShow} />
@@ -1594,35 +1632,35 @@ export default function App() {
           {/* Top bar with clock */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <button onClick={() => { setSelectedEvent(null); setShowSubEventForm(false); setShowVendorManager(false) }}
-              style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← All Events</button>
+              style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← All Events</button>
             <LiveClock />
           </div>
 
-          <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24, marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>
-                <h1 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 26, margin: "0 0 4px" }}>{selectedEvent.event_name}</h1>
-                <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 15, margin: "0 0 4px" }}>{selectedEvent.client_name}</p>
-                <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{selectedEvent.event_date} · {selectedEvent.venue}</p>
+                <h1 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 26, margin: "0 0 4px" }}>{selectedEvent.event_name}</h1>
+                <p style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 15, margin: "0 0 4px" }}>{selectedEvent.client_name}</p>
+                <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{selectedEvent.event_date} · {selectedEvent.venue}</p>
               </div>
               <StatusTag status={selectedEvent.status} onChange={(s) => { handleStatusChange(selectedEvent.id, s); setSelectedEvent(prev => ({ ...prev, status: s })) }} />
             </div>
-            {selectedEvent.hashtag && <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: "0 0 12px" }}>{selectedEvent.hashtag}</p>}
-            <div style={{ background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {selectedEvent.hashtag && <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 13, margin: "0 0 12px" }}>{selectedEvent.hashtag}</p>}
+            <div style={{ background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <p style={{ color: "#475569", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR LINK</p>
-                <p style={{ color: "#334155", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{window.location.origin}/?event={selectedEvent.id}</p>
+                <p style={{ color: "#4b5563", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR LINK</p>
+                <p style={{ color: "#6b7280", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{window.location.origin}/?event={selectedEvent.id}</p>
               </div>
               <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?event=${selectedEvent.id}`); alert("Copied!") }}
-                style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#c084fc", fontSize: 11, fontFamily: "Georgia", padding: "5px 10px", cursor: "pointer" }}>Copy</button>
+                style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#7c3aed", fontSize: 11, fontFamily: "Georgia", padding: "5px 10px", cursor: "pointer" }}>Copy</button>
             </div>
           </div>
 
           {/* Vendor Manager */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Vendor Team</h2>
-              <button onClick={() => setShowVendorManager(!showVendorManager)} style={{ background: showVendorManager ? "#1e2d40" : "rgba(192,132,252,0.1)", border: `1px solid ${showVendorManager ? "#1e2d40" : "rgba(192,132,252,0.3)"}`, borderRadius: 8, color: showVendorManager ? "#475569" : "#c084fc", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
+              <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Vendor Team</h2>
+              <button onClick={() => setShowVendorManager(!showVendorManager)} style={{ background: showVendorManager ? "#e5e7eb" : "rgba(192,132,252,0.1)", border: `1px solid ${showVendorManager ? "#e5e7eb" : "rgba(192,132,252,0.3)"}`, borderRadius: 8, color: showVendorManager ? "#475569" : "#c084fc", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
                 {showVendorManager ? "Close" : "+ Add Vendor"}
               </button>
             </div>
@@ -1634,38 +1672,38 @@ export default function App() {
                   const tierLabel = v.coordinator_tier === "lead" ? "Lead Coordinator" : v.coordinator_tier === "assistant" ? "Assistant Coordinator" : null
                   const isEditingThis = editingVendor?.id === v.id
                   return (
-                    <div key={v.id} style={{ background: "#0a0f18", border: `1px solid ${role?.color || "#1e2d40"}20`, borderRadius: 8, padding: "10px 14px" }}>
+                    <div key={v.id} style={{ background: "#ffffff", border: `1px solid ${role?.color || "#e5e7eb"}20`, borderRadius: 8, padding: "10px 14px" }}>
                       {isEditingThis ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           <input value={editVendorName} onChange={e => setEditVendorName(e.target.value)}
-                            style={{ background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia" }} />
+                            style={{ background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia" }} />
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                             {VENDOR_ROLES.map(r => (
-                              <button key={r.key} onClick={() => setEditVendorRole(r.key)} style={{ padding: "6px 10px", borderRadius: 6, cursor: "pointer", background: editVendorRole === r.key ? `${r.color}18` : "#05080e", border: `1.5px solid ${editVendorRole === r.key ? r.color : "#1e2d40"}`, color: editVendorRole === r.key ? r.color : "#475569", fontSize: 11, fontFamily: "Georgia" }}>{r.label}</button>
+                              <button key={r.key} onClick={() => setEditVendorRole(r.key)} style={{ padding: "6px 10px", borderRadius: 6, cursor: "pointer", background: editVendorRole === r.key ? `${r.color}18` : "#f9fafb", border: `1.5px solid ${editVendorRole === r.key ? r.color : "#d1d5db"}`, color: editVendorRole === r.key ? r.color : "#374151", fontSize: 11, fontFamily: "Georgia" }}>{r.label}</button>
                             ))}
                           </div>
                           {editVendorRole === "coordinator" && (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                               {COORDINATOR_TIERS.map(t => (
-                                <button key={t.key} onClick={() => setEditVendorTier(t.key)} style={{ padding: "6px 10px", borderRadius: 6, cursor: "pointer", background: editVendorTier === t.key ? `${t.color}18` : "#05080e", border: `1.5px solid ${editVendorTier === t.key ? t.color : "#1e2d40"}`, color: editVendorTier === t.key ? t.color : "#475569", fontSize: 11, fontFamily: "Georgia" }}>{t.label}</button>
+                                <button key={t.key} onClick={() => setEditVendorTier(t.key)} style={{ padding: "6px 10px", borderRadius: 6, cursor: "pointer", background: editVendorTier === t.key ? `${t.color}18` : "#f9fafb", border: `1.5px solid ${editVendorTier === t.key ? t.color : "#d1d5db"}`, color: editVendorTier === t.key ? t.color : "#374151", fontSize: 11, fontFamily: "Georgia" }}>{t.label}</button>
                               ))}
                             </div>
                           )}
                           <input value={editVendorPin} onChange={e => setEditVendorPin(e.target.value)} placeholder="New PIN" type="number" maxLength={6}
-                            style={{ background: "#05080e", border: "1px solid #1e2d40", borderRadius: 6, color: "#e2e8f0", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia" }} />
+                            style={{ background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 6, color: "#1a1a2e", fontSize: 13, padding: "7px 10px", outline: "none", fontFamily: "Georgia" }} />
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={handleSaveVendorEdit} style={{ flex: 2, padding: "7px", background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#c084fc", fontSize: 12, fontFamily: "Georgia", cursor: "pointer", fontWeight: 700 }}>Save</button>
-                            <button onClick={() => setEditingVendor(null)} style={{ flex: 1, padding: "7px", background: "transparent", border: "1px solid #1e2d40", borderRadius: 6, color: "#475569", fontSize: 12, fontFamily: "Georgia", cursor: "pointer" }}>Cancel</button>
+                            <button onClick={handleSaveVendorEdit} style={{ flex: 2, padding: "7px", background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", borderRadius: 6, color: "#7c3aed", fontSize: 12, fontFamily: "Georgia", cursor: "pointer", fontWeight: 700 }}>Save</button>
+                            <button onClick={() => setEditingVendor(null)} style={{ flex: 1, padding: "7px", background: "transparent", border: "1px solid #e5e7eb", borderRadius: 6, color: "#4b5563", fontSize: 12, fontFamily: "Georgia", cursor: "pointer" }}>Cancel</button>
                           </div>
                         </div>
                       ) : (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <div>
-                            <span style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 13 }}>{v.name}</span>
+                            <span style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 13 }}>{v.name}</span>
                             <span style={{ color: role?.color, fontFamily: "Georgia", fontSize: 11, marginLeft: 8 }}>{tierLabel || role?.label}</span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ color: "#334155", fontFamily: "Georgia", fontSize: 11 }}>PIN: {v.pin}</span>
+                            <span style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 11 }}>PIN: {v.pin}</span>
                             {v.checked_in && <span style={{ color: "#34d399", fontSize: 11 }}>✓ In</span>}
                             <button onClick={() => { setEditingVendor(v); setEditVendorName(v.name); setEditVendorRole(v.role); setEditVendorPin(v.pin); setEditVendorTier(v.coordinator_tier || "") }}
                               style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 5, color: "#60a5fa", fontSize: 10, fontFamily: "Georgia", padding: "3px 8px", cursor: "pointer" }}>✏ Edit</button>
@@ -1679,32 +1717,32 @@ export default function App() {
             )}
 
             {showVendorManager && (
-              <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 20 }}>
-                <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>ADD VENDOR</p>
+              <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
+                <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>ADD VENDOR</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <input value={newVendorName} onChange={e => setNewVendorName(e.target.value)} placeholder="Vendor name e.g. Joseph Babalola"
-                    style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {VENDOR_ROLES.map(role => (
-                      <button key={role.key} onClick={() => setNewVendorRole(role.key)} style={{ padding: "8px 12px", borderRadius: 8, cursor: "pointer", background: newVendorRole === role.key ? `${role.color}18` : "#05080e", border: `1.5px solid ${newVendorRole === role.key ? role.color : "#1e2d40"}`, color: newVendorRole === role.key ? role.color : "#475569", fontSize: 12, fontFamily: "Georgia", textAlign: "left" }}>{role.label}</button>
+                      <button key={role.key} onClick={() => setNewVendorRole(role.key)} style={{ padding: "8px 12px", borderRadius: 8, cursor: "pointer", background: newVendorRole === role.key ? `${role.color}18` : "#f9fafb", border: `1.5px solid ${newVendorRole === role.key ? role.color : "#d1d5db"}`, color: newVendorRole === role.key ? role.color : "#374151", fontSize: 12, fontFamily: "Georgia", textAlign: "left" }}>{role.label}</button>
                     ))}
                   </div>
                   {newVendorRole === "coordinator" && (
                     <div>
-                      <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>COORDINATOR TIER</label>
+                      <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>COORDINATOR TIER</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {COORDINATOR_TIERS.map(tier => (
-                          <button key={tier.key} onClick={() => setNewVendorTier(tier.key)} style={{ padding: "8px 12px", borderRadius: 8, cursor: "pointer", background: newVendorTier === tier.key ? `${tier.color}18` : "#05080e", border: `1.5px solid ${newVendorTier === tier.key ? tier.color : "#1e2d40"}`, color: newVendorTier === tier.key ? tier.color : "#475569", fontSize: 12, fontFamily: "Georgia", textAlign: "left" }}>{tier.label}</button>
+                          <button key={tier.key} onClick={() => setNewVendorTier(tier.key)} style={{ padding: "8px 12px", borderRadius: 8, cursor: "pointer", background: newVendorTier === tier.key ? `${tier.color}18` : "#f9fafb", border: `1.5px solid ${newVendorTier === tier.key ? tier.color : "#d1d5db"}`, color: newVendorTier === tier.key ? tier.color : "#374151", fontSize: 12, fontFamily: "Georgia", textAlign: "left" }}>{tier.label}</button>
                         ))}
                       </div>
                     </div>
                   )}
                   <div>
-                    <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>PIN (numbers only)</label>
+                    <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>PIN (numbers only)</label>
                     <input value={newVendorPin} onChange={e => setNewVendorPin(e.target.value)} placeholder="e.g. 1234" maxLength={6} type="number"
-                      style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                      style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                   </div>
-                  <button onClick={handleAddVendor} style={{ width: "100%", padding: "11px", background: newVendorName && newVendorRole && newVendorPin ? "#c084fc" : "#1e2d40", border: "none", borderRadius: 8, color: newVendorName && newVendorRole && newVendorPin ? "#05080e" : "#334155", fontSize: 13, fontWeight: 700, cursor: newVendorName && newVendorRole && newVendorPin ? "pointer" : "default", fontFamily: "Georgia" }}>Add to Team →</button>
+                  <button onClick={handleAddVendor} style={{ width: "100%", padding: "11px", background: newVendorName && newVendorRole && newVendorPin ? "#c084fc" : "#e5e7eb", border: "none", borderRadius: 8, color: newVendorName && newVendorRole && newVendorPin ? "#ffffff" : "#9ca3af", fontSize: 13, fontWeight: 700, cursor: newVendorName && newVendorRole && newVendorPin ? "pointer" : "default", fontFamily: "Georgia" }}>Add to Team →</button>
                 </div>
               </div>
             )}
@@ -1712,18 +1750,18 @@ export default function App() {
 
           {/* Sub-events header with import button */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Sub-Events</h2>
+            <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Sub-Events</h2>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowImportModal(true)} style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 8, color: "#60a5fa", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>📄 Import Run-of-Show</button>
-              <button onClick={() => setShowSubEventForm(!showSubEventForm)} style={{ background: showSubEventForm ? "#1e2d40" : "#c084fc", border: "none", borderRadius: 8, color: showSubEventForm ? "#475569" : "#05080e", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
+              <button onClick={() => setShowSubEventForm(!showSubEventForm)} style={{ background: showSubEventForm ? "#f3f4f6" : "#7c3aed", border: "none", borderRadius: 8, color: showSubEventForm ? "#6b7280" : "#ffffff", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
                 {showSubEventForm ? "Cancel" : "+ Add Sub-Event"}
               </button>
             </div>
           </div>
 
           {showSubEventForm && (
-            <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 20, marginBottom: 16 }}>
-              <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>NEW SUB-EVENT</p>
+            <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+              <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 16px" }}>NEW SUB-EVENT</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {[
                   { label: "NAME *", value: subLabel, setter: setSubLabel, placeholder: "e.g. Traditional Wedding" },
@@ -1731,13 +1769,13 @@ export default function App() {
                   { label: "START TIME *", value: subStartTime, setter: setSubStartTime, placeholder: "e.g. 9:00 AM" },
                 ].map(f => (
                   <div key={f.label}>
-                    <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{f.label}</label>
+                    <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>{f.label}</label>
                     <input value={f.value} onChange={e => f.setter(e.target.value)} placeholder={f.placeholder}
-                      style={{ width: "100%", background: "#05080e", border: "1px solid #1e2d40", borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
+                      style={{ width: "100%", background: "#f8f7f4", border: "1px solid #e5e7eb", borderRadius: 8, color: "#1a1a2e", fontSize: 14, padding: "10px 14px", outline: "none", fontFamily: "Georgia", boxSizing: "border-box" }} />
                   </div>
                 ))}
                 <div>
-                  <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>COLOR</label>
+                  <label style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>COLOR</label>
                   <div style={{ display: "flex", gap: 8 }}>
                     {PHASE_COLORS.map(c => (
                       <div key={c.value} onClick={() => setSubColor(c.value)} style={{ width: 28, height: 28, borderRadius: "50%", background: c.value, cursor: "pointer", border: subColor === c.value ? "3px solid white" : "3px solid transparent", boxSizing: "border-box" }} />
@@ -1747,28 +1785,22 @@ export default function App() {
                 <div style={{ background: `${subColor}10`, border: `1px solid ${subColor}30`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 3, height: 32, borderRadius: 2, background: subColor }} />
                   <div>
-                    <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: "0 0 2px" }}>{subLabel || "Sub-event name"}</p>
-                    <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{subVenue || "Venue"} · {subStartTime || "Start time"}</p>
+                    <p style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 14, margin: "0 0 2px" }}>{subLabel || "Sub-event name"}</p>
+                    <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{subVenue || "Venue"} · {subStartTime || "Start time"}</p>
                   </div>
                 </div>
-                <button onClick={handleAddSubEvent} style={{ width: "100%", padding: "11px", background: subLabel && subStartTime ? subColor : "#1e2d40", border: "none", borderRadius: 8, color: subLabel && subStartTime ? "#05080e" : "#334155", fontSize: 13, fontWeight: 700, cursor: subLabel && subStartTime ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Add Sub-Event →</button>
+                <button onClick={handleAddSubEvent} style={{ width: "100%", padding: "11px", background: subLabel && subStartTime ? subColor : "#e5e7eb", border: "none", borderRadius: 8, color: subLabel && subStartTime ? "#ffffff" : "#9ca3af", fontSize: 13, fontWeight: 700, cursor: subLabel && subStartTime ? "pointer" : "default", fontFamily: "Georgia", transition: "all 0.2s" }}>Add Sub-Event →</button>
               </div>
             </div>
           )}
 
           {(!selectedEvent.sub_events || selectedEvent.sub_events.length === 0) ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12 }}>No sub-events yet.</div>
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>No sub-events yet.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {selectedEvent.sub_events.map(sub => (
-  <SubEventCard
-    key={sub.id}
-    sub={sub}
-    onClick={() => { setSelectedSub(sub); loadDelayLogs(selectedEvent.id) }}
-    onDelete={handleDeleteSubEvent}
-    showDelete={true}
-  />
-))}
+                <SubEventCard key={sub.id} sub={sub} onClick={() => { setSelectedSub(sub); loadDelayLogs(selectedEvent.id) }} />
+              ))}
             </div>
           )}
         </div>
@@ -1778,37 +1810,45 @@ export default function App() {
 
   // ── SCREEN: DASHBOARD ─────────────────────────────────────────
   return (
-    <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
+    <div style={{ background: "#f8f7f4", minHeight: "100vh", padding: 32 }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-          <div>
-            <h1 style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 28, margin: "0 0 4px" }}>EventFlow</h1>
-            <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>Kanah Events Co.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <img
+              src="https://kanahevents.co/wp-content/uploads/2024/09/Kanah-Events-logo-e1726260992366.png"
+              alt="Kanah Events"
+              style={{ height: 52, objectFit: "contain" }}
+              onError={e => { e.target.style.display = "none" }}
+            />
+            <div>
+              <h1 style={{ color: "#7c3aed", fontFamily: "Georgia", fontSize: 26, margin: "0 0 2px", fontWeight: 700 }}>EventFlow</h1>
+              <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0, letterSpacing: 1 }}>KANAH EVENTS CO.</p>
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <LiveClock />
-            <button onClick={() => setScreen("create")} style={{ background: "#c084fc", border: "none", borderRadius: 8, color: "#05080e", fontSize: 13, fontWeight: 700, padding: "9px 18px", cursor: "pointer", fontFamily: "Georgia" }}>+ New Event</button>
+            <button onClick={() => setScreen("create")} style={{ background: "#7c3aed", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 18px", cursor: "pointer", fontFamily: "Georgia" }}>+ New Event</button>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           {[
-            { label: "Total Events", value: events.length, color: "#475569" },
+            { label: "Total Events", value: events.length, color: "#4b5563" },
             { label: "Live", value: events.filter(e => e.status === "Live").length, color: "#34d399" },
             { label: "Drafting", value: events.filter(e => e.status === "Drafting").length, color: "#fbbf24" },
             { label: "Completed", value: events.filter(e => e.status === "Completed").length, color: "#94a3b8" },
           ].map(stat => (
-            <div key={stat.label} style={{ flex: 1, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 10, padding: "12px 16px" }}>
+            <div key={stat.label} style={{ flex: 1, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 16px" }}>
               <div style={{ color: stat.color, fontFamily: "Georgia", fontSize: 22, fontWeight: 700 }}>{stat.value}</div>
-              <div style={{ color: "#334155", fontFamily: "Georgia", fontSize: 11, letterSpacing: 1 }}>{stat.label}</div>
+              <div style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 11, letterSpacing: 1 }}>{stat.label}</div>
             </div>
           ))}
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>Loading events...</div>
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14 }}>Loading events...</div>
         ) : events.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>No events yet. Click + New Event to get started.</div>
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14 }}>No events yet. Click + New Event to get started.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {events.map(event => (
