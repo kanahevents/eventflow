@@ -343,6 +343,7 @@ export default function App() {
         filter: `event_id=eq.${vendorEvent.id}`
       }, (payload) => {
         const d = payload.new
+        if (d.vendor_name === currentVendor?.name) return
         const msg = `⚠ ${d.vendor_name} (${d.vendor_role}) — ${d.item_label} delayed +${d.delay_mins}min${d.reason ? ` — ${d.reason}` : ""}`
         setNotifications(prev => [{ id: Date.now(), msg, type: "delay" }, ...prev].slice(0, 5))
       })
