@@ -1,4 +1,20 @@
-import { useState, useEffect, useRef } from "react"
+// =============================================================
+// REQUIRED SUPABASE COLUMNS:
+//   event_vendors:  coordinator_tier (text)
+//   delays:         submitted_at (timestamptz, default now())
+//                   completed_at (timestamptz)
+//                   actual_mins  (integer)
+//                   reconciliation_status (text, default 'open')
+//
+// SQL to run in Supabase SQL editor if not already done:
+//   ALTER TABLE event_vendors ADD COLUMN IF NOT EXISTS coordinator_tier TEXT;
+//   ALTER TABLE delays ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT NOW();
+//   ALTER TABLE delays ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+//   ALTER TABLE delays ADD COLUMN IF NOT EXISTS actual_mins INTEGER;
+//   ALTER TABLE delays ADD COLUMN IF NOT EXISTS reconciliation_status TEXT DEFAULT 'open';
+// =============================================================
+
+import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "./supabase"
 import { useSearchParams } from 'react-router-dom'
 
@@ -72,10 +88,37 @@ function fmtTimestamp(iso) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-// Permission helpers
-function isLead(vendor) { return vendor?.role === "coordinator" && vendor?.coordinatorTier === "lead" }
+function nowInMins() {
+  const n = new Date()
+  return n.getHours() * 60 + n.getMinutes()
+}
+
+function currentTimeStr() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+// Permission helpers — read coordinatorTier from vendor object
+function isLead(vendor)      { return vendor?.role === "coordinator" && vendor?.coordinatorTier === "lead" }
 function isAssistant(vendor) { return vendor?.role === "coordinator" && vendor?.coordinatorTier === "assistant" }
-function isCoord(vendor) { return vendor?.role === "coordinator" }
+function isCoord(vendor)     { return vendor?.role === "coordinator" }
+
+// ── LIVE CLOCK ────────────────────────────────────────────────
+function LiveClock() {
+  const [time, setTime] = useState(currentTimeStr())
+  useEffect(() => {
+    const id = setInterval(() => setTime(currentTimeStr()), 30000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.2)",
+      borderRadius: 20, padding: "4px 14px"
+    }}>
+      <span style={{ color: "#c084fc", fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>🕐 {time}</span>
+    </div>
+  )
+}
 
 // ── HEALTH TRACKER ────────────────────────────────────────────
 function HealthTracker({ runningDelay, skippedCount }) {
@@ -95,15 +138,20 @@ function StatusTag({ status, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const current = STATUS_OPTIONS.find(s => s.label === status)
+
   useEffect(() => {
     if (!open) return
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    // Use setTimeout to avoid the same click that opened the menu from closing it
+    const timer = setTimeout(() => document.addEventListener("mousedown", h), 0)
+    return () => { clearTimeout(timer); document.removeEventListener("mousedown", h) }
   }, [open])
+
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <div onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
+      <div onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
         style={{ background: `${current?.color}18`, border: `1px solid ${current?.color}50`, borderRadius: 20, padding: "3px 10px", display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: current?.color }} />
         <span style={{ color: current?.color, fontSize: 10, fontFamily: "Georgia", letterSpacing: 2 }}>{status}</span>
@@ -173,59 +221,62 @@ function SubEventCard({ sub, onClick }) {
 }
 
 // ── RECONCILIATION BANNER ─────────────────────────────────────
+// Shows ONE aggregated banner per item (bug fix: was one per delay record)
 function ReconciliationBanner({ itemId, delayLogs, currentVendor, onApprove, onDecline }) {
-  const pending = (delayLogs[itemId] || []).filter(d => d.reconciliation_status === "pending")
-  if (pending.length === 0) return null
+  if (!isCoord(currentVendor)) return null // vendors never see this
+
+  const itemLogs = delayLogs[String(itemId)] || []
+  const pendingLogs = itemLogs.filter(d => d.reconciliation_status === "pending")
+  if (pendingLogs.length === 0) return null
+
+  // Aggregate: sum estimated, use latest actual_mins (they all resolve to same item)
+  const totalEstimated = pendingLogs.reduce((sum, d) => sum + (d.delay_mins || 0), 0)
+  const actualMins = pendingLogs[0]?.actual_mins || 0
+  const diff = actualMins - totalEstimated
+  if (Math.abs(diff) < 2) return null // no meaningful delta
+
+  const isOver = diff > 0
+  const color = isOver ? "#f87171" : "#34d399"
+  const label = isOver
+    ? `Ran ${diff}min over estimate — shift timeline?`
+    : `Finished ${Math.abs(diff)}min under estimate — recover time?`
   const canApprove = isLead(currentVendor)
+
   return (
-    <div style={{ marginTop: 8 }}>
-      {pending.map(d => {
-        const diff = (d.actual_mins || 0) - d.delay_mins
-        const isOver = diff > 0
-        const isUnder = diff < 0
-        const color = isOver ? "#f87171" : "#34d399"
-        const label = isOver
-          ? `Ran ${diff}min over estimate — shift timeline?`
-          : isUnder
-          ? `Finished ${Math.abs(diff)}min under estimate — recover time?`
-          : null
-        if (!label) return null
-        return (
-          <div key={d.id} style={{ background: `${color}10`, border: `1px solid ${color}30`, borderRadius: 8, padding: "10px 12px", marginBottom: 6 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-              <div>
-                <p style={{ color, fontSize: 11, fontFamily: "Georgia", fontWeight: 700, margin: "0 0 2px" }}>
-                  {isOver ? "⚠" : "✅"} {label}
-                </p>
-                <p style={{ color: "#475569", fontSize: 10, fontFamily: "Georgia", margin: 0 }}>
-                  Estimated {d.delay_mins}min · Actual {d.actual_mins}min · Logged by {d.vendor_name}
-                </p>
-              </div>
-              {canApprove ? (
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => onApprove(d)}
-                    style={{ background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 5, color, fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}>
-                    Approve
-                  </button>
-                  <button onClick={() => onDecline(d)}
-                    style={{ background: "transparent", border: "1px solid #1e2d40", borderRadius: 5, color: "#475569", fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
-                    Decline
-                  </button>
-                </div>
-              ) : (
-                <span style={{ color: "#475569", fontSize: 10, fontFamily: "Georgia", flexShrink: 0 }}>Pending Lead approval</span>
-              )}
-            </div>
+    <div style={{ background: `${color}10`, border: `1px solid ${color}30`, borderRadius: 8, padding: "10px 12px", marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div>
+          <p style={{ color, fontSize: 11, fontFamily: "Georgia", fontWeight: 700, margin: "0 0 2px" }}>
+            {isOver ? "⚠" : "✅"} {label}
+          </p>
+          <p style={{ color: "#94a3b8", fontSize: 10, fontFamily: "Georgia", margin: 0 }}>
+            Estimated {totalEstimated}min · Actual {actualMins}min · Logged by {pendingLogs.map(d => d.vendor_name).filter((v, i, a) => a.indexOf(v) === i).join(", ")}
+          </p>
+        </div>
+        {canApprove ? (
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <button onClick={() => pendingLogs.forEach(d => onApprove(d))}
+              style={{ background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 5, color, fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}>
+              Approve
+            </button>
+            <button onClick={() => pendingLogs.forEach(d => onDecline(d))}
+              style={{ background: "transparent", border: "1px solid #1e2d40", borderRadius: 5, color: "#475569", fontSize: 10, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
+              Decline
+            </button>
           </div>
-        )
-      })}
+        ) : (
+          <span style={{ color: "#94a3b8", fontSize: 10, fontFamily: "Georgia", flexShrink: 0, whiteSpace: "nowrap" }}>
+            Pending Lead approval
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
 // ── DELAY LOG ─────────────────────────────────────────────────
 function DelayLog({ itemId, delayLogs, currentVendor }) {
-  const logs = (delayLogs[itemId] || [])
+  const logs = delayLogs[String(itemId)] || []
   if (logs.length === 0) return null
   const canSeeDetails = isCoord(currentVendor)
   return (
@@ -249,8 +300,7 @@ function DelayLog({ itemId, delayLogs, currentVendor }) {
                 </p>
                 {d.completed_at && (
                   <p style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia", margin: "2px 0 0" }}>
-                    Completed {fmtTimestamp(d.completed_at)} · Actual: {d.actual_mins}min
-                    {" "}
+                    Completed {fmtTimestamp(d.completed_at)} · Actual: {d.actual_mins}min{" "}
                     <span style={{ color: statusColor }}>({d.reconciliation_status})</span>
                   </p>
                 )}
@@ -270,8 +320,124 @@ function DelayLog({ itemId, delayLogs, currentVendor }) {
   )
 }
 
+// ── IMPORT RUN-OF-SHOW MODAL ──────────────────────────────────
+// TODO: Wire to Claude API via Supabase Edge Function
+function parseRunOfShow(fileText) {
+  // STUB — replace with real Claude API call via Edge Function
+  return {
+    sub_events: [
+      {
+        id: Date.now(),
+        label: "Ceremony",
+        venue: "Main Hall",
+        startTime: "10:00 AM",
+        color: "#c084fc",
+        items: [
+          { id: Date.now() + 1, time: "10:00 AM", endTime: "10:15 AM", startTime: "10:00 AM", adjustedStart: "10:00 AM", adjustedEnd: "10:15 AM", label: "Guest Seating", involved: ["coordinator", "ushers"], notes: "Parsed from document", itemStatus: "upcoming", delayMins: 0 },
+          { id: Date.now() + 2, time: "10:15 AM", endTime: "10:45 AM", startTime: "10:15 AM", adjustedStart: "10:15 AM", adjustedEnd: "10:45 AM", label: "Processional", involved: ["coordinator", "dj"], notes: "", itemStatus: "upcoming", delayMins: 0 },
+        ]
+      }
+    ]
+  }
+}
+
+function ImportModal({ onClose, onImport }) {
+  const [stage, setStage] = useState("upload") // upload | parsing | preview
+  const [parsed, setParsed] = useState(null)
+  const fileRef = useRef(null)
+
+  const handleFile = (file) => {
+    if (!file) return
+    setStage("parsing")
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target.result
+      // TODO: Replace stub with Claude API Edge Function call
+      setTimeout(() => {
+        const result = parseRunOfShow(text)
+        setParsed(result)
+        setStage("preview")
+      }, 1200)
+    }
+    reader.readAsText(file)
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 16, padding: 28, width: "100%", maxWidth: 560, maxHeight: "80vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 20, margin: 0 }}>📄 Import Run-of-Show</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 20 }}>×</button>
+        </div>
+
+        {stage === "upload" && (
+          <div>
+            <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 13, margin: "0 0 16px" }}>
+              Upload a .txt or .pdf run-of-show and we'll auto-create sub-events and timeline items.
+            </p>
+            <div onClick={() => fileRef.current?.click()}
+              style={{ border: "2px dashed #1e2d40", borderRadius: 12, padding: "40px 20px", textAlign: "center", cursor: "pointer", transition: "border-color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "#c084fc40"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "#1e2d40"}>
+              <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 14, margin: "0 0 8px" }}>Click to upload</p>
+              <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>.txt or .pdf accepted</p>
+            </div>
+            <input ref={fileRef} type="file" accept=".txt,.pdf" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
+            <p style={{ color: "#334155", fontSize: 10, fontFamily: "Georgia", margin: "12px 0 0", textAlign: "center" }}>
+              // TODO: Wire to Claude API via Supabase Edge Function
+            </p>
+          </div>
+        )}
+
+        {stage === "parsing" && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ width: 32, height: 32, border: "3px solid #c084fc", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 1s linear infinite" }} />
+            <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 14 }}>Parsing document...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+          </div>
+        )}
+
+        {stage === "preview" && parsed && (
+          <div>
+            <p style={{ color: "#34d399", fontFamily: "Georgia", fontSize: 13, margin: "0 0 16px" }}>
+              ✅ Found {parsed.sub_events.length} sub-event{parsed.sub_events.length !== 1 ? "s" : ""} — review before importing
+            </p>
+            {parsed.sub_events.map((sub, si) => (
+              <div key={si} style={{ background: "#07101a", border: `1px solid ${sub.color}30`, borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 3, height: 24, borderRadius: 2, background: sub.color }} />
+                  <div>
+                    <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: 0, fontWeight: 600 }}>{sub.label}</p>
+                    <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 11, margin: 0 }}>{sub.venue} · {sub.startTime}</p>
+                  </div>
+                </div>
+                {(sub.items || []).map((item, ii) => (
+                  <div key={ii} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #1e2d40" }}>
+                    <span style={{ color: "#475569", fontFamily: "Georgia", fontSize: 11, width: 80, flexShrink: 0 }}>{item.time}</span>
+                    <span style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 12 }}>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={() => onImport(parsed)}
+                style={{ flex: 2, padding: "11px", background: "#c084fc", border: "none", borderRadius: 8, color: "#05080e", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia" }}>
+                Import All →
+              </button>
+              <button onClick={onClose}
+                style={{ flex: 1, padding: "11px", background: "transparent", border: "1px solid #1e2d40", borderRadius: 8, color: "#475569", fontSize: 13, cursor: "pointer", fontFamily: "Georgia" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── VENDOR ITEM CARD ──────────────────────────────────────────
-function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEditItem, onDeleteItem, onApproveReconciliation, onDeclineReconciliation, delayLogs }) {
+function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEditItem, onDeleteItem, onApproveReconciliation, onDeclineReconciliation, delayLogs, isNow, itemRef }) {
   const [showDelayForm, setShowDelayForm] = useState(false)
   const [delayMins, setDelayMins] = useState(10)
   const [delayReason, setDelayReason] = useState("")
@@ -291,18 +457,16 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
   const assistant = isAssistant(currentVendor)
   const currentStatus = ITEM_STATUSES.find(s => s.key === (item.itemStatus || "upcoming"))
   const hasDelay = item.adjustedStart && item.startTime && item.adjustedStart !== item.startTime
-  const itemDelayLogs = delayLogs[item.id] || []
-  const hasPendingReconciliation = itemDelayLogs.some(d => d.reconciliation_status === "pending")
+  const itemDelayLogs = delayLogs[String(item.id)] || []
+  const hasPendingReconciliation = coordinator && itemDelayLogs.some(d => d.reconciliation_status === "pending")
 
-  const availableStatuses = (lead || assistant)
-    ? ITEM_STATUSES
-    : ITEM_STATUSES.filter(s => s.key !== "skipped")
+  const availableStatuses = (lead || assistant) ? ITEM_STATUSES : ITEM_STATUSES.filter(s => s.key !== "skipped")
 
   useEffect(() => {
     if (!showStatusMenu) return
     const h = (e) => { if (statusMenuRef.current && !statusMenuRef.current.contains(e.target)) setShowStatusMenu(false) }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    const timer = setTimeout(() => document.addEventListener("mousedown", h), 0)
+    return () => { clearTimeout(timer); document.removeEventListener("mousedown", h) }
   }, [showStatusMenu])
 
   const handleStatusSelect = (key) => {
@@ -327,8 +491,16 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
     setShowDelayForm(false); setDelayReason("")
   }
 
+  // Pulsing border style for current activity
+  const borderColor = isNow ? "#c084fc"
+    : hasPendingReconciliation ? "#fbbf24"
+    : item.itemStatus === "delayed" ? "rgba(248,113,113,0.3)"
+    : item.itemStatus === "completed" || item.itemStatus === "early" ? "rgba(52,211,153,0.3)"
+    : "#1e2d40"
+  const boxShadow = isNow ? "0 0 0 2px #c084fc40, 0 0 16px #c084fc20" : "none"
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 16 }}>
+    <div ref={itemRef} style={{ display: "flex", alignItems: "flex-start", marginBottom: 16 }}>
       {/* Time column */}
       <div style={{ width: 90, flexShrink: 0, paddingTop: 4, textAlign: "right" }}>
         <div style={{ color: hasDelay ? "#f87171" : "#475569", fontFamily: "Georgia", fontSize: 12 }}>
@@ -340,14 +512,17 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
 
       {/* Dot */}
       <div style={{ width: 16, margin: "0 10px", display: "flex", justifyContent: "center", paddingTop: 8, flexShrink: 0 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.subColor, border: `2px solid ${item.subColor}`, position: "relative", zIndex: 2 }} />
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: isNow ? "#c084fc" : item.subColor, border: `2px solid ${isNow ? "#c084fc" : item.subColor}`, position: "relative", zIndex: 2 }} />
       </div>
 
       {/* Card */}
-      <div style={{ flex: 1, background: "#0a0f18", border: `1px solid ${hasPendingReconciliation ? "#fbbf24" : item.itemStatus === "delayed" ? "rgba(248,113,113,0.3)" : item.itemStatus === "completed" || item.itemStatus === "early" ? "rgba(52,211,153,0.3)" : "#1e2d40"}`, borderRadius: 8, overflow: "visible" }}>
+      <div style={{ flex: 1, background: "#0a0f18", border: `1px solid ${borderColor}`, borderRadius: 8, overflow: "visible", boxShadow, transition: "box-shadow 0.3s, border-color 0.3s" }}>
+        {isNow && (
+          <div style={{ background: "rgba(192,132,252,0.08)", borderBottom: "1px solid rgba(192,132,252,0.2)", padding: "3px 12px" }}>
+            <span style={{ color: "#c084fc", fontSize: 9, fontFamily: "Georgia", letterSpacing: 2 }}>📍 HAPPENING NOW</span>
+          </div>
+        )}
         <div style={{ padding: "10px 14px" }}>
-
-          {/* Header row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div style={{ flex: 1 }}>
               <p style={{ color: item.itemStatus === "skipped" ? "#334155" : "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: "0 0 2px", fontWeight: 600, textDecoration: item.itemStatus === "skipped" ? "line-through" : "none" }}>
@@ -361,7 +536,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
 
             {/* Status dropdown */}
             <div ref={statusMenuRef} style={{ position: "relative" }}>
-              <button onClick={() => setShowStatusMenu(!showStatusMenu)} style={{
+              <button onClick={() => setShowStatusMenu(o => !o)} style={{
                 background: `${currentStatus?.color}15`, border: `1px solid ${currentStatus?.color}40`,
                 borderRadius: 6, color: currentStatus?.color, fontSize: 10,
                 fontFamily: "Georgia", padding: "3px 8px", cursor: "pointer", letterSpacing: 1
@@ -382,12 +557,10 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
             </div>
           </div>
 
-          {/* Notes */}
           {item.notes && !isEditing && (
             <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 12, margin: "4px 0 8px", lineHeight: 1.6 }}>{item.notes}</p>
           )}
 
-          {/* Edit form */}
           {isEditing && (
             <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8 }}>
@@ -424,9 +597,7 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
             </div>
           )}
 
-          {/* Action buttons row */}
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Log delay button — hide if completed/early/skipped */}
             {item.itemStatus !== "skipped" && item.itemStatus !== "completed" && item.itemStatus !== "early" && (
               <button onClick={() => setShowDelayForm(!showDelayForm)} style={{
                 background: showDelayForm ? "#1e2d40" : "rgba(248,113,113,0.08)",
@@ -436,14 +607,12 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
               }}>{showDelayForm ? "Cancel" : "⏱ Log Delay"}</button>
             )}
 
-            {/* Coordinator-only buttons */}
             {coordinator && (
               <>
                 <button onClick={() => { setIsEditing(!isEditing); setShowDelayForm(false) }}
                   style={{ background: isEditing ? "#1e2d40" : "rgba(96,165,250,0.08)", border: `1px solid ${isEditing ? "#1e2d40" : "rgba(96,165,250,0.25)"}`, borderRadius: 5, color: isEditing ? "#475569" : "#60a5fa", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
                   {isEditing ? "Cancel Edit" : "✏ Edit"}
                 </button>
-                {/* Only lead can delete */}
                 {lead && (
                   <button onClick={() => { if (window.confirm(`Delete "${item.label}"?`)) onDeleteItem(item) }}
                     style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 5, color: "#f87171", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer" }}>
@@ -453,7 +622,6 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
               </>
             )}
 
-            {/* Delay log toggle — anyone can see */}
             {itemDelayLogs.length > 0 && (
               <button onClick={() => setShowDelayLog(!showDelayLog)}
                 style={{ background: "transparent", border: "1px solid #1e2d40", borderRadius: 5, color: "#475569", fontSize: 11, fontFamily: "Georgia", padding: "4px 10px", cursor: "pointer", marginLeft: "auto" }}>
@@ -462,24 +630,18 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
             )}
           </div>
 
-          {/* Reconciliation banners — coordinators only */}
-          {coordinator && (
-            <ReconciliationBanner
-              itemId={item.id}
-              delayLogs={delayLogs}
-              currentVendor={currentVendor}
-              onApprove={onApproveReconciliation}
-              onDecline={onDeclineReconciliation}
-            />
-          )}
+          {/* Reconciliation — coordinators only */}
+          <ReconciliationBanner
+            itemId={item.id}
+            delayLogs={delayLogs}
+            currentVendor={currentVendor}
+            onApprove={onApproveReconciliation}
+            onDecline={onDeclineReconciliation}
+          />
 
-          {/* Delay log */}
-          {showDelayLog && (
-            <DelayLog itemId={item.id} delayLogs={delayLogs} currentVendor={currentVendor} />
-          )}
+          {showDelayLog && <DelayLog itemId={item.id} delayLogs={delayLogs} currentVendor={currentVendor} />}
         </div>
 
-        {/* Log delay form */}
         {showDelayForm && (
           <div style={{ borderTop: "1px solid #1e2d40", padding: "12px 14px", background: "#07101a" }}>
             <p style={{ color: "#475569", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 10px" }}>LOG A DELAY</p>
@@ -519,10 +681,11 @@ export default function App() {
   const [showSubEventForm, setShowSubEventForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
   const [showVendorManager, setShowVendorManager] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState([])
-  const [delayLogs, setDelayLogs] = useState({}) // { [itemId]: [...delays] }
+  const [delayLogs, setDelayLogs] = useState({})
 
   // Vendor state
   const [currentVendor, setCurrentVendor] = useState(null)
@@ -532,7 +695,10 @@ export default function App() {
   const [selectedVendorForPin, setSelectedVendorForPin] = useState(null)
   const [pinError, setPinError] = useState("")
 
-  // Editing existing vendor
+  // Vendor filter (vendor timeline only)
+  const [vendorFilter, setVendorFilter] = useState("All")
+
+  // Vendor editing
   const [editingVendor, setEditingVendor] = useState(null)
   const [editVendorName, setEditVendorName] = useState("")
   const [editVendorRole, setEditVendorRole] = useState("")
@@ -565,6 +731,9 @@ export default function App() {
   const [newVendorPin, setNewVendorPin] = useState("")
   const [newVendorTier, setNewVendorTier] = useState("")
 
+  // Jump-to-now refs
+  const nowItemRef = useRef(null)
+
   useEffect(() => { loadEvents() }, [])
 
   useEffect(() => {
@@ -576,7 +745,8 @@ export default function App() {
         loadDelayLogs(found.id)
         const savedVendor = localStorage.getItem(`eventflow_vendor_${found.id}`)
         if (savedVendor) {
-          setCurrentVendor(JSON.parse(savedVendor))
+          const v = JSON.parse(savedVendor)
+          setCurrentVendor(v)
           setScreen("vendor-timeline")
         } else {
           setScreen("vendor-join")
@@ -585,7 +755,7 @@ export default function App() {
     }
   }, [eventIdFromUrl, events])
 
-  // Realtime: vendor-facing event
+  // Realtime: vendor-facing
   useEffect(() => {
     if (!vendorEvent) return
     const channel = supabase
@@ -603,10 +773,7 @@ export default function App() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'delays', filter: `event_id=eq.${vendorEvent.id}` }, (payload) => {
         const d = payload.new
-        setDelayLogs(prev => ({
-          ...prev,
-          [d.item_id]: (prev[d.item_id] || []).map(x => x.id === d.id ? d : x)
-        }))
+        setDelayLogs(prev => ({ ...prev, [d.item_id]: (prev[d.item_id] || []).map(x => x.id === d.id ? d : x) }))
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'item_activity', filter: `event_id=eq.${vendorEvent.id}` }, (payload) => {
         const a = payload.new
@@ -616,14 +783,14 @@ export default function App() {
     return () => supabase.removeChannel(channel)
   }, [vendorEvent])
 
-  // Realtime: coordinator-facing event
+  // Realtime: coordinator-facing
   useEffect(() => {
     if (!selectedEvent) return
     const channel = supabase
       .channel(`coord-event-${selectedEvent.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'delays', filter: `event_id=eq.${selectedEvent.id}` }, (payload) => {
         const d = payload.new
-        setNotifications(prev => [{ id: Date.now(), msg: `⚠ ${d.vendor_name} — "${d.item_label}" delayed +${d.delay_mins}min`, type: "delay" }, ...prev].slice(0, 5))
+        setNotifications(prev => [{ id: Date.now(), msg: `⚠ ${d.vendor_name} — "${d.item_label}" +${d.delay_mins}min`, type: "delay" }, ...prev].slice(0, 5))
         setDelayLogs(prev => ({ ...prev, [d.item_id]: [...(prev[d.item_id] || []), d] }))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'delays', filter: `event_id=eq.${selectedEvent.id}` }, (payload) => {
@@ -656,8 +823,7 @@ export default function App() {
 
   const handleCreate = async () => {
     if (!eventName || !clientName || !eventDate) return
-    const newEvent = { event_name: eventName, client_name: clientName, event_date: eventDate, venue, hashtag, status: "Drafting", sub_events: [], running_delay: 0, health_status: "good" }
-    const { data, error } = await supabase.from("events").insert(newEvent).select()
+    const { data, error } = await supabase.from("events").insert({ event_name: eventName, client_name: clientName, event_date: eventDate, venue, hashtag, status: "Drafting", sub_events: [], running_delay: 0, health_status: "good" }).select()
     if (!error) {
       setEvents(prev => [...prev, data[0]].sort((a, b) => new Date(a.event_date) - new Date(b.event_date)))
       setEventName(""); setClientName(""); setEventDate(""); setVenue(""); setHashtag("")
@@ -681,6 +847,18 @@ export default function App() {
     }
     setSubLabel(""); setSubVenue(""); setSubStartTime(""); setSubColor("#c084fc")
     setShowSubEventForm(false)
+  }
+
+  // Import run-of-show: append parsed sub_events to existing event
+  const handleImportRunOfShow = async (parsed) => {
+    if (!selectedEvent) return
+    const updatedSubEvents = [...(selectedEvent.sub_events || []), ...parsed.sub_events]
+    const { error } = await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", selectedEvent.id)
+    if (!error) {
+      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e))
+      setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
+    }
+    setShowImportModal(false)
   }
 
   const handleAddItem = async () => {
@@ -718,10 +896,7 @@ export default function App() {
     await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", eventToUpdate.id)
     setEvents(prev => prev.map(e => e.id === eventToUpdate.id ? { ...e, sub_events: updatedSubEvents } : e))
     if (selectedEvent) setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
-    if (selectedSub) {
-      const updatedSub = updatedSubEvents.find(s => s.id === selectedSub.id)
-      if (updatedSub) setSelectedSub(updatedSub)
-    }
+    if (selectedSub) { const u = updatedSubEvents.find(s => s.id === selectedSub.id); if (u) setSelectedSub(u) }
   }
 
   const handleDeleteItem = async (item) => {
@@ -731,12 +906,7 @@ export default function App() {
       ...sub, items: (sub.items || []).filter(it => String(it.id) !== String(item.id))
     }))
     await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", eventToUpdate.id)
-    setEvents(prev => prev.map(e => e.id === eventToUpdate.id ? { ...e, sub_events: updatedSubEvents } : e))
-    if (selectedEvent) setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
-    if (selectedSub) {
-      const updatedSub = updatedSubEvents.find(s => s.id === selectedSub.id)
-      if (updatedSub) setSelectedSub(updatedSub)
-    }
+    syncEventState(eventToUpdate.id, updatedSubEvents, eventToUpdate.running_delay || 0)
   }
 
   const cascadeDelay = (items, fromIndex, delayMins) => {
@@ -755,10 +925,10 @@ export default function App() {
     if (redeemed <= 0) return { items, redeemed: 0 }
     const updatedItems = items.map((item, i) => {
       if (i <= completedIndex) return item
-      const origStart = parseTimeToMins(item.startTime || item.time)
-      const origEnd = parseTimeToMins(item.endTime || item.time)
-      const duration = origEnd - origStart
       const currentStart = parseTimeToMins(item.adjustedStart || item.startTime || item.time)
+      const origEnd = parseTimeToMins(item.endTime || item.time)
+      const origStart = parseTimeToMins(item.startTime || item.time)
+      const duration = origEnd - origStart
       const newStart = currentStart - redeemed
       return { ...item, adjustedStart: formatMins(newStart), adjustedEnd: formatMins(newStart + duration), delayMins: Math.max(0, (item.delayMins || 0) - redeemed) }
     })
@@ -775,13 +945,15 @@ export default function App() {
     })
     const newRunningDelay = (eventToUpdate.running_delay || 0) + mins
     const healthStatus = newRunningDelay >= 15 ? "bad" : newRunningDelay >= 1 ? "warning" : "good"
-    await supabase.from("events").update({ sub_events: updatedSubEvents, running_delay: newRunningDelay, health_status: healthStatus }).eq("id", eventToUpdate.id)
-    const { data: delayRow } = await supabase.from("delays").insert({
+    const { error: evtErr } = await supabase.from("events").update({ sub_events: updatedSubEvents, running_delay: newRunningDelay, health_status: healthStatus }).eq("id", eventToUpdate.id)
+    if (evtErr) console.warn("handleLogDelay: event update failed", evtErr)
+    const { data: delayRow, error: delayErr } = await supabase.from("delays").insert({
       event_id: eventToUpdate.id, item_id: String(item.id), item_label: item.label,
       vendor_name: currentVendor?.name || "Coordinator", vendor_role: currentVendor?.role || "coordinator",
       delay_mins: mins, reason, status: "flagged",
       submitted_at: new Date().toISOString(), reconciliation_status: "open"
     }).select()
+    if (delayErr) console.warn("handleLogDelay: delay insert failed — check delays table columns", delayErr)
     if (delayRow?.[0]) {
       setDelayLogs(prev => ({ ...prev, [String(item.id)]: [...(prev[String(item.id)] || []), delayRow[0]] }))
     }
@@ -794,45 +966,54 @@ export default function App() {
     let updatedSubEvents = eventToUpdate.sub_events || []
     let newRunningDelay = eventToUpdate.running_delay || 0
 
-    // Reconciliation: when marking complete/early, calculate actual vs estimated
     if (newStatus === "completed" || newStatus === "early") {
-      const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
-      const scheduledEndMins = parseTimeToMins(item.endTime || item.time)
-      const actualMins = nowMins - parseTimeToMins(item.startTime || item.time)
-      const estimatedDelayMins = (delayLogs[String(item.id)] || [])
-        .filter(d => d.reconciliation_status === "open")
-        .reduce((sum, d) => sum + d.delay_mins, 0)
+      const now = nowInMins()
+      // FIX: actual_mins = now - adjustedStart (not original startTime)
+      // This measures how long the item actually ran from its adjusted (post-delay) start
+      const adjustedStartMins = parseTimeToMins(item.adjustedStart || item.startTime || item.time)
+      const rawActualMins = now - adjustedStartMins
+      const MAX_ACTUAL = 480 // 8 hours cap
 
-      // Reconcile open delays
-      const openDelays = (delayLogs[String(item.id)] || []).filter(d => d.reconciliation_status === "open")
-      for (const d of openDelays) {
-        const actualItemMins = nowMins - parseTimeToMins(item.startTime || item.time)
-        const diff = actualItemMins - d.delay_mins
-        const needsReconciliation = Math.abs(diff) >= 2 // only flag if diff >= 2 mins
-        const newRecStatus = needsReconciliation ? "pending" : "resolved"
-        await supabase.from("delays").update({
-          completed_at: new Date().toISOString(),
-          actual_mins: actualItemMins,
-          reconciliation_status: newRecStatus
-        }).eq("id", d.id)
-        setDelayLogs(prev => ({
-          ...prev,
-          [String(item.id)]: (prev[String(item.id)] || []).map(x =>
-            x.id === d.id ? { ...x, completed_at: new Date().toISOString(), actual_mins: actualItemMins, reconciliation_status: newRecStatus } : x
-          )
-        }))
+      if (rawActualMins > MAX_ACTUAL) {
+        console.warn(`handleItemStatusChange: actual_mins (${rawActualMins}) exceeds cap — skipping reconciliation for item ${item.id}`)
+      } else {
+        const actualMins = Math.max(0, rawActualMins)
+        const openDelays = (delayLogs[String(item.id)] || []).filter(d => d.reconciliation_status === "open")
+        const totalEstimated = openDelays.reduce((sum, d) => sum + (d.delay_mins || 0), 0)
+        const diff = actualMins - totalEstimated
+        // Only create reconciliation entry if there are actual delays logged
+        if (openDelays.length > 0) {
+          const needsReconciliation = Math.abs(diff) >= 2
+          const newRecStatus = needsReconciliation ? "pending" : "resolved"
+          for (const d of openDelays) {
+            await supabase.from("delays").update({
+              completed_at: new Date().toISOString(),
+              actual_mins: actualMins,
+              reconciliation_status: newRecStatus
+            }).eq("id", d.id)
+          }
+          // Update local state for all open delays at once
+          setDelayLogs(prev => ({
+            ...prev,
+            [String(item.id)]: (prev[String(item.id)] || []).map(x =>
+              openDelays.some(d => d.id === x.id)
+                ? { ...x, completed_at: new Date().toISOString(), actual_mins: actualMins, reconciliation_status: newRecStatus }
+                : x
+            )
+          }))
+        }
       }
 
-      // Redemption logic if finished early vs adjusted time
+      // Redemption: if finished before adjustedEnd, recover time
       const adjustedEndMins = parseTimeToMins(item.adjustedEnd || item.endTime || item.time)
-      const savedMins = adjustedEndMins - nowMins
+      const savedMins = adjustedEndMins - now
       if (savedMins > 0 && newRunningDelay > 0) {
         updatedSubEvents = updatedSubEvents.map(sub => {
-          const itemIndex = (sub.items || []).findIndex(i => String(i.id) === String(item.id))
-          if (itemIndex === -1) return sub
-          const { items: redeemedItems, redeemed } = redeemDelay(sub.items, itemIndex, savedMins, newRunningDelay)
+          const idx = (sub.items || []).findIndex(i => String(i.id) === String(item.id))
+          if (idx === -1) return sub
+          const { items: redeemedItems, redeemed } = redeemDelay(sub.items, idx, savedMins, newRunningDelay)
           newRunningDelay = Math.max(0, newRunningDelay - redeemed)
-          return { ...sub, items: redeemedItems.map((it, i) => i === itemIndex ? { ...it, itemStatus: newStatus } : it) }
+          return { ...sub, items: redeemedItems.map((it, i) => i === idx ? { ...it, itemStatus: newStatus } : it) }
         })
       } else {
         updatedSubEvents = updatedSubEvents.map(sub => ({
@@ -857,7 +1038,6 @@ export default function App() {
     syncEventState(eventToUpdate.id, updatedSubEvents, newRunningDelay)
   }
 
-  // Approve reconciliation: apply additional cascade or recovery
   const handleApproveReconciliation = async (delayRecord) => {
     const eventToUpdate = selectedEvent || vendorEvent
     if (!eventToUpdate) return
@@ -887,10 +1067,7 @@ export default function App() {
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, sub_events: updatedSubEvents, running_delay: newRunningDelay } : e))
     if (vendorEvent?.id === eventId) setVendorEvent(prev => ({ ...prev, sub_events: updatedSubEvents, running_delay: newRunningDelay }))
     if (selectedEvent?.id === eventId) setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents, running_delay: newRunningDelay }))
-    if (selectedSub) {
-      const updatedSub = updatedSubEvents.find(s => s.id === selectedSub.id)
-      if (updatedSub) setSelectedSub(updatedSub)
-    }
+    if (selectedSub) { const u = updatedSubEvents.find(s => s.id === selectedSub.id); if (u) setSelectedSub(u) }
   }
 
   const handleCaughtUp = async () => {
@@ -907,11 +1084,9 @@ export default function App() {
   const handleAddVendor = async () => {
     if (!newVendorName || !newVendorRole || !newVendorPin || !selectedEvent) return
     const role = VENDOR_ROLES.find(r => r.key === newVendorRole)
-    const isCoordRole = newVendorRole === "coordinator"
     const { data, error } = await supabase.from("event_vendors").insert({
-      event_id: selectedEvent.id, name: newVendorName,
-      role: newVendorRole, pin: newVendorPin, color: role?.color,
-      coordinator_tier: isCoordRole ? newVendorTier : null
+      event_id: selectedEvent.id, name: newVendorName, role: newVendorRole, pin: newVendorPin,
+      color: role?.color, coordinator_tier: newVendorRole === "coordinator" ? newVendorTier : null
     }).select()
     if (!error) {
       setEventVendors(prev => [...prev, data[0]])
@@ -922,14 +1097,14 @@ export default function App() {
   const handleSaveVendorEdit = async () => {
     if (!editingVendor) return
     const role = VENDOR_ROLES.find(r => r.key === editVendorRole)
-    const isCoordRole = editVendorRole === "coordinator"
     const { error } = await supabase.from("event_vendors").update({
       name: editVendorName, role: editVendorRole, pin: editVendorPin,
-      color: role?.color, coordinator_tier: isCoordRole ? editVendorTier : null
+      color: role?.color, coordinator_tier: editVendorRole === "coordinator" ? editVendorTier : null
     }).eq("id", editingVendor.id)
+    if (error) console.warn("handleSaveVendorEdit: update failed — check event_vendors.coordinator_tier column", error)
     if (!error) {
       setEventVendors(prev => prev.map(v => v.id === editingVendor.id
-        ? { ...v, name: editVendorName, role: editVendorRole, pin: editVendorPin, color: role?.color, coordinator_tier: isCoordRole ? editVendorTier : null }
+        ? { ...v, name: editVendorName, role: editVendorRole, pin: editVendorPin, color: role?.color, coordinator_tier: editVendorRole === "coordinator" ? editVendorTier : null }
         : v
       ))
       setEditingVendor(null)
@@ -939,15 +1114,17 @@ export default function App() {
   const handlePinJoin = async () => {
     if (!selectedVendorForPin || !pinInput) return
     if (pinInput === selectedVendorForPin.pin) {
+      const tier = selectedVendorForPin.coordinator_tier || null
       const roleLabel = VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.label
-      const tierLabel = selectedVendorForPin.coordinator_tier === "lead" ? "Lead Coordinator"
-        : selectedVendorForPin.coordinator_tier === "assistant" ? "Assistant Coordinator"
-        : roleLabel
+      const tierLabel = tier === "lead" ? "Lead Coordinator" : tier === "assistant" ? "Assistant Coordinator" : roleLabel
+      // coordinatorTier is stored in vendor object and persisted to localStorage
       const vendor = {
-        name: selectedVendorForPin.name, role: selectedVendorForPin.role,
-        color: selectedVendorForPin.color, label: tierLabel,
+        name: selectedVendorForPin.name,
+        role: selectedVendorForPin.role,
+        color: selectedVendorForPin.color,
+        label: tierLabel,
         dbId: selectedVendorForPin.id,
-        coordinatorTier: selectedVendorForPin.coordinator_tier || null
+        coordinatorTier: tier,  // ← critical: must be present for isLead() to work
       }
       localStorage.setItem(`eventflow_vendor_${vendorEvent.id}`, JSON.stringify(vendor))
       await supabase.from("event_vendors").update({ checked_in: true, checked_in_at: new Date().toISOString() }).eq("id", selectedVendorForPin.id)
@@ -973,23 +1150,79 @@ export default function App() {
   }
 
   // ── SHARED ITEM LIST RENDERER ─────────────────────────────────
-  const renderItemList = (items) => {
-    const parseT = (t) => parseTimeToMins(t)
-    const sorted = [...items].sort((a, b) => parseT(a.startTime || a.time) - parseT(b.startTime || b.time))
-    return sorted.map(item => (
-      <VendorItemCard
-        key={item.id}
-        item={item}
-        currentVendor={currentVendor}
-        onLogDelay={handleLogDelay}
-        onStatusChange={handleItemStatusChange}
-        onEditItem={handleEditItem}
-        onDeleteItem={handleDeleteItem}
-        onApproveReconciliation={handleApproveReconciliation}
-        onDeclineReconciliation={handleDeclineReconciliation}
-        delayLogs={delayLogs}
-      />
-    ))
+  const renderItemList = (items, showFilter = false) => {
+    const now = nowInMins()
+    const sorted = [...items].sort((a, b) => parseTimeToMins(a.startTime || a.time) - parseTimeToMins(b.startTime || b.time))
+
+    const filtered = showFilter && vendorFilter !== "All"
+      ? sorted.filter(item => {
+          const s = item.itemStatus || "upcoming"
+          if (vendorFilter === "Upcoming") return s === "upcoming"
+          if (vendorFilter === "In Progress") return s === "inprogress"
+          if (vendorFilter === "Delayed") return s === "delayed"
+          if (vendorFilter === "Completed") return s === "completed" || s === "early"
+          return true
+        })
+      : sorted
+
+    let nowIndex = -1
+    sorted.forEach((item, i) => {
+      const start = parseTimeToMins(item.adjustedStart || item.startTime || item.time)
+      const end = parseTimeToMins(item.adjustedEnd || item.endTime || item.time)
+      if (now >= start && now < end) nowIndex = i
+    })
+    // Find index of "now" item in filtered list
+    const nowItemId = nowIndex >= 0 ? sorted[nowIndex]?.id : null
+
+    return (
+      <>
+        {showFilter && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+            {["All", "Upcoming", "In Progress", "Delayed", "Completed"].map(f => (
+              <button key={f} onClick={() => setVendorFilter(f)} style={{
+                padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11,
+                background: vendorFilter === f ? "rgba(192,132,252,0.18)" : "transparent",
+                border: `1px solid ${vendorFilter === f ? "#c084fc" : "#1e2d40"}`,
+                color: vendorFilter === f ? "#c084fc" : "#475569"
+              }}>{f}</button>
+            ))}
+            {nowItemId && (
+              <button onClick={() => nowItemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc", marginLeft: "auto" }}>
+                📍 Jump to Now
+              </button>
+            )}
+          </div>
+        )}
+        {!showFilter && nowItemId && (
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => nowItemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              style={{ padding: "4px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia", fontSize: 11, background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc" }}>
+              📍 Jump to Now
+            </button>
+          </div>
+        )}
+        {filtered.map(item => {
+          const isNow = String(item.id) === String(nowItemId)
+          return (
+            <VendorItemCard
+              key={item.id}
+              item={item}
+              currentVendor={currentVendor}
+              onLogDelay={handleLogDelay}
+              onStatusChange={handleItemStatusChange}
+              onEditItem={handleEditItem}
+              onDeleteItem={handleDeleteItem}
+              onApproveReconciliation={handleApproveReconciliation}
+              onDeclineReconciliation={handleDeclineReconciliation}
+              delayLogs={delayLogs}
+              isNow={isNow}
+              itemRef={isNow ? nowItemRef : null}
+            />
+          )
+        })}
+      </>
+    )
   }
 
   // ── SCREEN: VENDOR JOIN ───────────────────────────────────────
@@ -1035,7 +1268,9 @@ export default function App() {
                 <button onClick={() => { setSelectedVendorForPin(null); setPinError("") }} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 16 }}>← Back</button>
                 <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 16, margin: "0 0 4px" }}>{selectedVendorForPin.name}</p>
                 <p style={{ color: VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.color, fontFamily: "Georgia", fontSize: 12, margin: "0 0 20px" }}>
-                  {selectedVendorForPin.coordinator_tier === "lead" ? "Lead Coordinator" : selectedVendorForPin.coordinator_tier === "assistant" ? "Assistant Coordinator" : VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.label}
+                  {selectedVendorForPin.coordinator_tier === "lead" ? "Lead Coordinator"
+                    : selectedVendorForPin.coordinator_tier === "assistant" ? "Assistant Coordinator"
+                    : VENDOR_ROLES.find(r => r.key === selectedVendorForPin.role)?.label}
                 </p>
                 <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 8, fontFamily: "Georgia" }}>ENTER YOUR PIN</label>
                 <input type="password" value={pinInput} onChange={e => setPinInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePinJoin()}
@@ -1070,6 +1305,15 @@ export default function App() {
       <div style={{ background: "#05080e", minHeight: "100vh", padding: 24, paddingTop: notifications.length > 0 ? 60 : 24 }}>
         <NotificationBanner />
         <div style={{ maxWidth: 680, margin: "0 auto" }}>
+
+          {/* Top bar with clock */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <LiveClock />
+            {lead && vendorEvent.running_delay > 0 && (
+              <button onClick={handleCaughtUp} style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", borderRadius: 8, color: "#34d399", fontSize: 11, fontFamily: "Georgia", padding: "5px 12px", cursor: "pointer" }}>✓ We're Caught Up</button>
+            )}
+          </div>
+
           <div style={{ background: "#0a0f18", border: `1px solid ${currentVendor.color}30`, borderRadius: 12, padding: 16, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: "0 0 2px" }}>{vendorEvent.event_name}</h2>
@@ -1087,9 +1331,6 @@ export default function App() {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <HealthTracker runningDelay={vendorEvent.running_delay || 0} skippedCount={skippedCount} />
-            {(vendorEvent.running_delay > 0) && lead && (
-              <button onClick={handleCaughtUp} style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", borderRadius: 8, color: "#34d399", fontSize: 11, fontFamily: "Georgia", padding: "5px 12px", cursor: "pointer" }}>✓ We're Caught Up</button>
-            )}
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -1111,7 +1352,8 @@ export default function App() {
           ) : (
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#1e2d40" }} />
-              {renderItemList(myItems)}
+              {/* showFilter=true only for non-coordinator vendors */}
+              {renderItemList(myItems, !coordinator)}
             </div>
           )}
         </div>
@@ -1161,10 +1403,15 @@ export default function App() {
       <div style={{ background: "#05080e", minHeight: "100vh", padding: 32, paddingTop: notifications.length > 0 ? 72 : 32 }}>
         <NotificationBanner />
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-            <button onClick={() => setSelectedSub(null)} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← {selectedEvent.event_name}</button>
-            <span style={{ color: "#1e2d40", fontSize: 13 }}>/</span>
-            <span style={{ color: selectedSub.color, fontFamily: "Georgia", fontSize: 13 }}>{selectedSub.label}</span>
+
+          {/* Clock row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => setSelectedSub(null)} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← {selectedEvent.event_name}</button>
+              <span style={{ color: "#1e2d40", fontSize: 13 }}>/</span>
+              <span style={{ color: selectedSub.color, fontFamily: "Georgia", fontSize: 13 }}>{selectedSub.label}</span>
+            </div>
+            <LiveClock />
           </div>
 
           <div style={{ background: "#0a0f18", borderLeft: `4px solid ${selectedSub.color}`, border: `1px solid ${selectedSub.color}30`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
@@ -1236,7 +1483,7 @@ export default function App() {
           ) : (
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#1e2d40" }} />
-              {renderItemList(selectedSub.items.map(item => ({ ...item, subLabel: selectedSub.label, subColor: selectedSub.color })))}
+              {renderItemList(selectedSub.items.map(item => ({ ...item, subLabel: selectedSub.label, subColor: selectedSub.color })), false)}
             </div>
           )}
         </div>
@@ -1249,9 +1496,17 @@ export default function App() {
     return (
       <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
         <NotificationBanner />
+        {showImportModal && (
+          <ImportModal onClose={() => setShowImportModal(false)} onImport={handleImportRunOfShow} />
+        )}
         <div style={{ maxWidth: 700, margin: "0 auto" }}>
-          <button onClick={() => { setSelectedEvent(null); setShowSubEventForm(false); setShowVendorManager(false) }}
-            style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0, marginBottom: 24 }}>← All Events</button>
+
+          {/* Top bar with clock */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <button onClick={() => { setSelectedEvent(null); setShowSubEventForm(false); setShowVendorManager(false) }}
+              style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← All Events</button>
+            <LiveClock />
+          </div>
 
           <div style={{ background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12, padding: 24, marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -1321,7 +1576,7 @@ export default function App() {
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <span style={{ color: "#334155", fontFamily: "Georgia", fontSize: 11 }}>PIN: {v.pin}</span>
-                            {v.checked_in && <span style={{ color: "#34d399", fontSize: 11, fontFamily: "Georgia" }}>✓ In</span>}
+                            {v.checked_in && <span style={{ color: "#34d399", fontSize: 11 }}>✓ In</span>}
                             <button onClick={() => { setEditingVendor(v); setEditVendorName(v.name); setEditVendorRole(v.role); setEditVendorPin(v.pin); setEditVendorTier(v.coordinator_tier || "") }}
                               style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 5, color: "#60a5fa", fontSize: 10, fontFamily: "Georgia", padding: "3px 8px", cursor: "pointer" }}>✏ Edit</button>
                           </div>
@@ -1344,7 +1599,6 @@ export default function App() {
                       <button key={role.key} onClick={() => setNewVendorRole(role.key)} style={{ padding: "8px 12px", borderRadius: 8, cursor: "pointer", background: newVendorRole === role.key ? `${role.color}18` : "#05080e", border: `1.5px solid ${newVendorRole === role.key ? role.color : "#1e2d40"}`, color: newVendorRole === role.key ? role.color : "#475569", fontSize: 12, fontFamily: "Georgia", textAlign: "left" }}>{role.label}</button>
                     ))}
                   </div>
-                  {/* Coordinator tier selector — only shows when coordinator role is picked */}
                   {newVendorRole === "coordinator" && (
                     <div>
                       <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>COORDINATOR TIER</label>
@@ -1366,12 +1620,15 @@ export default function App() {
             )}
           </div>
 
-          {/* Sub-events */}
+          {/* Sub-events header with import button */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Sub-Events</h2>
-            <button onClick={() => setShowSubEventForm(!showSubEventForm)} style={{ background: showSubEventForm ? "#1e2d40" : "#c084fc", border: "none", borderRadius: 8, color: showSubEventForm ? "#475569" : "#05080e", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
-              {showSubEventForm ? "Cancel" : "+ Add Sub-Event"}
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowImportModal(true)} style={{ background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 8, color: "#60a5fa", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>📄 Import Run-of-Show</button>
+              <button onClick={() => setShowSubEventForm(!showSubEventForm)} style={{ background: showSubEventForm ? "#1e2d40" : "#c084fc", border: "none", borderRadius: 8, color: showSubEventForm ? "#475569" : "#05080e", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
+                {showSubEventForm ? "Cancel" : "+ Add Sub-Event"}
+              </button>
+            </div>
           </div>
 
           {showSubEventForm && (
@@ -1432,7 +1689,10 @@ export default function App() {
             <h1 style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 28, margin: "0 0 4px" }}>EventFlow</h1>
             <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>Kanah Events Co.</p>
           </div>
-          <button onClick={() => setScreen("create")} style={{ background: "#c084fc", border: "none", borderRadius: 8, color: "#05080e", fontSize: 13, fontWeight: 700, padding: "9px 18px", cursor: "pointer", fontFamily: "Georgia" }}>+ New Event</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <LiveClock />
+            <button onClick={() => setScreen("create")} style={{ background: "#c084fc", border: "none", borderRadius: 8, color: "#05080e", fontSize: 13, fontWeight: 700, padding: "9px 18px", cursor: "pointer", fontFamily: "Georgia" }}>+ New Event</button>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
