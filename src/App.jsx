@@ -146,11 +146,14 @@ export default function App() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Vendor join state
-  const [vendorName, setVendorName] = useState("")
-  const [vendorRole, setVendorRole] = useState("")
-  const [currentVendor, setCurrentVendor] = useState(null)
-  const [vendorEvent, setVendorEvent] = useState(null)
+// Vendor join state — persisted across refreshes
+const [vendorName, setVendorName] = useState("")
+const [vendorRole, setVendorRole] = useState("")
+const [currentVendor, setCurrentVendor] = useState(() => {
+  const saved = localStorage.getItem("eventflow_vendor")
+  return saved ? JSON.parse(saved) : null
+})
+const [vendorEvent, setVendorEvent] = useState(null)
 
   // Create event form
   const [eventName, setEventName] = useState("")
@@ -182,7 +185,13 @@ export default function App() {
       const found = events.find(e => String(e.id) === String(eventIdFromUrl))
       if (found) {
         setVendorEvent(found)
-        setScreen("vendor-join")
+        const savedVendor = localStorage.getItem("eventflow_vendor")
+        if (savedVendor) {
+          setCurrentVendor(JSON.parse(savedVendor))
+          setScreen("vendor-timeline")
+        } else {
+          setScreen("vendor-join")
+        }
       }
     }
   }, [eventIdFromUrl, events])
@@ -257,7 +266,9 @@ export default function App() {
   const handleVendorJoin = () => {
     if (!vendorName || !vendorRole) return
     const role = VENDOR_ROLES.find(r => r.key === vendorRole)
-    setCurrentVendor({ name: vendorName, role: vendorRole, color: role.color, label: role.label })
+    const vendor = { name: vendorName, role: vendorRole, color: role.color, label: role.label }
+    localStorage.setItem("eventflow_vendor", JSON.stringify(vendor))
+    setCurrentVendor(vendor)
     setScreen("vendor-timeline")
   }
 
@@ -348,6 +359,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      
     )
   }
 
@@ -381,18 +393,31 @@ export default function App() {
                 {vendorEvent.event_date} · {vendorEvent.venue}
               </p>
             </div>
-            <div style={{
-              background: `${currentVendor.color}18`,
-              border: `1px solid ${currentVendor.color}40`,
-              borderRadius: 20, padding: "6px 14px", textAlign: "right"
-            }}>
-              <p style={{ color: currentVendor.color, fontSize: 12, fontFamily: "Georgia", margin: "0 0 1px", fontWeight: 700 }}>
-                {currentVendor.name}
-              </p>
-              <p style={{ color: currentVendor.color, fontSize: 10, fontFamily: "Georgia", margin: 0, opacity: 0.7 }}>
-                {currentVendor.label}
-              </p>
-            </div>
+            <div style={{ textAlign: "right" }}>
+  <div style={{
+    background: `${currentVendor.color}18`,
+    border: `1px solid ${currentVendor.color}40`,
+    borderRadius: 20, padding: "6px 14px", marginBottom: 6
+  }}>
+    <p style={{ color: currentVendor.color, fontSize: 12, fontFamily: "Georgia", margin: "0 0 1px", fontWeight: 700 }}>
+      {currentVendor.name}
+    </p>
+    <p style={{ color: currentVendor.color, fontSize: 10, fontFamily: "Georgia", margin: 0, opacity: 0.7 }}>
+      {currentVendor.label}
+    </p>
+  </div>
+  <button
+    onClick={() => {
+      localStorage.removeItem("eventflow_vendor")
+      setCurrentVendor(null)
+      setScreen("vendor-join")
+    }}
+    style={{
+      background: "none", border: "none", color: "#334155",
+      cursor: "pointer", fontFamily: "Georgia", fontSize: 11, padding: 0
+    }}
+  >Not you?</button>
+</div>
           </div>
 
           {/* Filter tabs */}
