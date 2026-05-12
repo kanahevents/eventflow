@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { supabase } from "./supabase"
+import { useSearchParams } from 'react-router-dom'
 
 const STATUS_OPTIONS = [
   { label: "Drafting",  color: "#fbbf24" },
@@ -19,6 +20,18 @@ const PHASE_COLORS = [
   { label: "Amber",  value: "#fbbf24" },
   { label: "Pink",   value: "#f472b6" },
   { label: "Orange", value: "#fb923c" },
+]
+
+const VENDOR_ROLES = [
+  { key: "coordinator", label: "Coordinator",  color: "#c084fc" },
+  { key: "mc",          label: "MC",           color: "#fbbf24" },
+  { key: "dj",          label: "DJ",           color: "#a78bfa" },
+  { key: "catering",    label: "Catering",     color: "#2dd4bf" },
+  { key: "photography", label: "Photography",  color: "#60a5fa" },
+  { key: "videography", label: "Videography",  color: "#34d399" },
+  { key: "liveband",    label: "Live Band",    color: "#fb923c" },
+  { key: "decor",       label: "Decor",        color: "#f472b6" },
+  { key: "venue",       label: "Venue",        color: "#e2e8f0" },
 ]
 
 function StatusTag({ status, onChange }) {
@@ -122,6 +135,9 @@ function SubEventCard({ sub, onClick }) {
 }
 
 export default function App() {
+  const [searchParams] = useSearchParams()
+  const eventIdFromUrl = searchParams.get("event")
+
   const [screen, setScreen] = useState("dashboard")
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [selectedSub, setSelectedSub] = useState(null)
@@ -129,6 +145,12 @@ export default function App() {
   const [showItemForm, setShowItemForm] = useState(false)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Vendor join state
+  const [vendorName, setVendorName] = useState("")
+  const [vendorRole, setVendorRole] = useState("")
+  const [currentVendor, setCurrentVendor] = useState(null)
+  const [vendorEvent, setVendorEvent] = useState(null)
 
   // Create event form
   const [eventName, setEventName] = useState("")
@@ -149,10 +171,21 @@ export default function App() {
   const [itemInvolved, setItemInvolved] = useState("")
   const [itemNotes, setItemNotes] = useState("")
 
-  // ── LOAD EVENTS FROM SUPABASE ON STARTUP ──
+  // Load events on startup
   useEffect(() => {
     loadEvents()
   }, [])
+
+  // If event ID is in URL, load that specific event for vendor view
+  useEffect(() => {
+    if (eventIdFromUrl && events.length > 0) {
+      const found = events.find(e => String(e.id) === String(eventIdFromUrl))
+      if (found) {
+        setVendorEvent(found)
+        setScreen("vendor-join")
+      }
+    }
+  }, [eventIdFromUrl, events])
 
   const loadEvents = async () => {
     setLoading(true)
@@ -168,86 +201,52 @@ export default function App() {
     setLoading(false)
   }
 
-  // ── CREATE EVENT ──
   const handleCreate = async () => {
     if (!eventName || !clientName || !eventDate) return
     const newEvent = {
-      event_name: eventName,
-      client_name: clientName,
-      event_date: eventDate,
-      venue, hashtag,
-      status: "Drafting",
-      sub_events: []
+      event_name: eventName, client_name: clientName,
+      event_date: eventDate, venue, hashtag,
+      status: "Drafting", sub_events: []
     }
-    const { data, error } = await supabase
-      .from("events")
-      .insert(newEvent)
-      .select()
-    if (error) {
-      console.error("Error creating event:", error)
-    } else {
-      setEvents(prev => [...prev, data[0]].sort((a, b) =>
-        new Date(a.event_date) - new Date(b.event_date)
-      ))
-      setEventName(""); setClientName(""); setEventDate("")
-      setVenue(""); setHashtag("")
+    const { data, error } = await supabase.from("events").insert(newEvent).select()
+    if (!error) {
+      setEvents(prev => [...prev, data[0]].sort((a, b) => new Date(a.event_date) - new Date(b.event_date)))
+      setEventName(""); setClientName(""); setEventDate(""); setVenue(""); setHashtag("")
       setScreen("dashboard")
     }
   }
 
-  // ── UPDATE STATUS ──
   const handleStatusChange = async (id, newStatus) => {
     await supabase.from("events").update({ status: newStatus }).eq("id", id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e))
   }
 
-  // ── ADD SUB-EVENT ──
   const handleAddSubEvent = async () => {
     if (!subLabel || !subStartTime) return
-    const newSub = {
-      id: Date.now(),
-      label: subLabel,
-      venue: subVenue,
-      startTime: subStartTime,
-      color: subColor,
-      items: []
-    }
+    const newSub = { id: Date.now(), label: subLabel, venue: subVenue, startTime: subStartTime, color: subColor, items: [] }
     const updatedSubEvents = [...(selectedEvent.sub_events || []), newSub]
-    const { error } = await supabase
-      .from("events")
-      .update({ sub_events: updatedSubEvents })
-      .eq("id", selectedEvent.id)
+    const { error } = await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", selectedEvent.id)
     if (!error) {
-      setEvents(prev => prev.map(e =>
-        e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e
-      ))
+      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e))
       setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
     }
     setSubLabel(""); setSubVenue(""); setSubStartTime(""); setSubColor("#c084fc")
     setShowSubEventForm(false)
   }
 
-  // ── ADD TIMELINE ITEM ──
   const handleAddItem = async () => {
     if (!itemTime || !itemLabel) return
     const newItem = {
-      id: Date.now(),
-      time: itemTime,
-      label: itemLabel,
+      id: Date.now(), time: itemTime, label: itemLabel,
       involved: itemInvolved.split(",").map(s => s.trim()).filter(Boolean),
       notes: itemNotes
     }
     const updatedSubEvents = (selectedEvent.sub_events || []).map(s =>
       s.id === selectedSub.id ? { ...s, items: [...(s.items || []), newItem] } : s
     )
-    const { error } = await supabase
-      .from("events")
-      .update({ sub_events: updatedSubEvents })
-      .eq("id", selectedEvent.id)
+    const { error } = await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", selectedEvent.id)
     if (!error) {
-      setEvents(prev => prev.map(e =>
-        e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e
-      ))
+      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e))
       setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
       setSelectedSub(prev => ({ ...prev, items: [...(prev.items || []), newItem] }))
     }
@@ -255,7 +254,208 @@ export default function App() {
     setShowItemForm(false)
   }
 
-  // ── SCREEN: CREATE EVENT ──
+  const handleVendorJoin = () => {
+    if (!vendorName || !vendorRole) return
+    const role = VENDOR_ROLES.find(r => r.key === vendorRole)
+    setCurrentVendor({ name: vendorName, role: vendorRole, color: role.color, label: role.label })
+    setScreen("vendor-timeline")
+  }
+
+  // ── SCREEN: VENDOR JOIN ──────────────────────────────────────
+  if (screen === "vendor-join" && vendorEvent) {
+    return (
+      <div style={{
+        background: "#05080e", minHeight: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+        backgroundImage: "radial-gradient(ellipse at 30% 60%, rgba(192,132,252,0.06) 0%, transparent 55%)"
+      }}>
+        <div style={{ width: "100%", maxWidth: 440 }}>
+          {/* Event info */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{
+              display: "inline-block", background: "rgba(192,132,252,0.1)",
+              border: "1px solid rgba(192,132,252,0.2)", borderRadius: 8,
+              padding: "6px 16px", marginBottom: 16
+            }}>
+              <span style={{ color: "#c084fc", fontSize: 11, letterSpacing: 2 }}>YOU'RE INVITED</span>
+            </div>
+            <h1 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 28, margin: "0 0 6px" }}>
+              {vendorEvent.event_name}
+            </h1>
+            <p style={{ color: "#c084fc", fontFamily: "Georgia", fontSize: 15, margin: "0 0 4px" }}>
+              {vendorEvent.client_name}
+            </p>
+            <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>
+              {vendorEvent.event_date} · {vendorEvent.venue}
+            </p>
+          </div>
+
+          {/* Join form */}
+          <div style={{
+            background: "#0a0f18", border: "1px solid #1e2d40",
+            borderRadius: 16, padding: 28
+          }}>
+            <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 20px" }}>
+              JOIN AS YOUR ROLE
+            </p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 6, fontFamily: "Georgia" }}>YOUR NAME</label>
+              <input
+                value={vendorName}
+                onChange={e => setVendorName(e.target.value)}
+                placeholder="e.g. Joseph Babalola"
+                style={{
+                  width: "100%", background: "#05080e", border: "1px solid #1e2d40",
+                  borderRadius: 8, color: "#e2e8f0", fontSize: 14, padding: "10px 14px",
+                  outline: "none", fontFamily: "Georgia", boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ color: "#475569", fontSize: 11, letterSpacing: 2, display: "block", marginBottom: 10, fontFamily: "Georgia" }}>YOUR ROLE</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {VENDOR_ROLES.map(role => (
+                  <button
+                    key={role.key}
+                    onClick={() => setVendorRole(role.key)}
+                    style={{
+                      padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                      background: vendorRole === role.key ? `${role.color}18` : "#05080e",
+                      border: `1.5px solid ${vendorRole === role.key ? role.color : "#1e2d40"}`,
+                      color: vendorRole === role.key ? role.color : "#475569",
+                      fontSize: 13, fontFamily: "Georgia", textAlign: "left",
+                      transition: "all 0.15s"
+                    }}
+                  >{role.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleVendorJoin}
+              style={{
+                width: "100%", padding: "13px",
+                background: vendorName && vendorRole ? "#c084fc" : "#1e2d40",
+                border: "none", borderRadius: 8,
+                color: vendorName && vendorRole ? "#05080e" : "#334155",
+                fontSize: 15, fontWeight: 700,
+                cursor: vendorName && vendorRole ? "pointer" : "default",
+                fontFamily: "Georgia", transition: "all 0.2s"
+              }}
+            >Join Event →</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── SCREEN: VENDOR TIMELINE ──────────────────────────────────
+  if (screen === "vendor-timeline" && currentVendor && vendorEvent) {
+    const allItems = (vendorEvent.sub_events || []).flatMap(sub =>
+      (sub.items || []).map(item => ({ ...item, subLabel: sub.label, subColor: sub.color, subTime: sub.startTime }))
+    )
+    const myItems = allItems.filter(item =>
+      item.involved && item.involved.some(p =>
+        p.toLowerCase().includes(currentVendor.role.toLowerCase()) ||
+        p.toLowerCase().includes(currentVendor.label.toLowerCase())
+      )
+    )
+
+    return (
+      <div style={{ background: "#05080e", minHeight: "100vh", padding: 24 }}>
+        <div style={{ maxWidth: 680, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{
+            background: "#0a0f18", border: `1px solid ${currentVendor.color}30`,
+            borderRadius: 12, padding: 16, marginBottom: 24,
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <div>
+              <h2 style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 18, margin: "0 0 2px" }}>
+                {vendorEvent.event_name}
+              </h2>
+              <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>
+                {vendorEvent.event_date} · {vendorEvent.venue}
+              </p>
+            </div>
+            <div style={{
+              background: `${currentVendor.color}18`,
+              border: `1px solid ${currentVendor.color}40`,
+              borderRadius: 20, padding: "6px 14px", textAlign: "right"
+            }}>
+              <p style={{ color: currentVendor.color, fontSize: 12, fontFamily: "Georgia", margin: "0 0 1px", fontWeight: 700 }}>
+                {currentVendor.name}
+              </p>
+              <p style={{ color: currentVendor.color, fontSize: 10, fontFamily: "Georgia", margin: 0, opacity: 0.7 }}>
+                {currentVendor.label}
+              </p>
+            </div>
+          </div>
+
+          {/* Filter tabs */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+            {(vendorEvent.sub_events || []).map(sub => (
+              <div key={sub.id} style={{
+                background: `${sub.color}15`, border: `1px solid ${sub.color}30`,
+                borderRadius: 20, padding: "4px 12px"
+              }}>
+                <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia" }}>{sub.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* My items */}
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>
+              YOUR ITEMS — {myItems.length} tasks
+            </p>
+          </div>
+
+          {myItems.length === 0 ? (
+            <div style={{
+              textAlign: "center", padding: "40px 0",
+              color: "#334155", fontFamily: "Georgia", fontSize: 14,
+              background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12
+            }}>
+              No items assigned to {currentVendor.label} yet.
+            </div>
+          ) : (
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", left: 88, top: 0, bottom: 0, width: 1, background: "#1e2d40" }} />
+              {myItems.map(item => (
+                <div key={item.id} style={{ display: "flex", alignItems: "flex-start", marginBottom: 16 }}>
+                  <div style={{ width: 80, flexShrink: 0, paddingTop: 4, textAlign: "right" }}>
+                    <span style={{ color: "#475569", fontFamily: "Georgia", fontSize: 12 }}>{item.time}</span>
+                  </div>
+                  <div style={{ width: 16, margin: "0 10px", display: "flex", justifyContent: "center", paddingTop: 8, flexShrink: 0 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.subColor, border: `2px solid ${item.subColor}`, position: "relative", zIndex: 2 }} />
+                  </div>
+                  <div style={{ flex: 1, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 8, padding: "10px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                      <p style={{ color: "#e2e8f0", fontFamily: "Georgia", fontSize: 14, margin: 0, fontWeight: 600 }}>{item.label}</p>
+                      <span style={{
+                        background: `${item.subColor}15`, border: `1px solid ${item.subColor}30`,
+                        borderRadius: 4, padding: "1px 7px", color: item.subColor,
+                        fontSize: 9, fontFamily: "Georgia", letterSpacing: 1, flexShrink: 0, marginLeft: 8
+                      }}>{item.subLabel}</span>
+                    </div>
+                    {item.notes && (
+                      <p style={{ color: "#475569", fontFamily: "Georgia", fontSize: 12, margin: 0, lineHeight: 1.6 }}>{item.notes}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── SCREEN: CREATE EVENT ──────────────────────────────────────
   if (screen === "create") {
     return (
       <div style={{ background: "#05080e", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -298,7 +498,7 @@ export default function App() {
     )
   }
 
-  // ── SCREEN: TIMELINE VIEW ──
+  // ── SCREEN: TIMELINE VIEW ─────────────────────────────────────
   if (selectedSub && selectedEvent) {
     return (
       <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
@@ -319,6 +519,31 @@ export default function App() {
                 <span style={{ color: selectedSub.color, fontSize: 12, fontFamily: "Georgia", letterSpacing: 1 }}>{selectedSub.startTime}</span>
               </div>
             </div>
+          </div>
+
+          {/* Share link for vendors */}
+          <div style={{
+            background: "#0a0f18", border: "1px solid #1e2d40",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <div>
+              <p style={{ color: "#475569", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR SHARE LINK</p>
+              <p style={{ color: "#334155", fontSize: 12, fontFamily: "Georgia", margin: 0 }}>
+                {window.location.origin}/?event={selectedEvent.id}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/?event=${selectedEvent.id}`)
+                alert("Link copied!")
+              }}
+              style={{
+                background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)",
+                borderRadius: 6, color: "#c084fc", fontSize: 11, fontFamily: "Georgia",
+                padding: "6px 12px", cursor: "pointer"
+              }}
+            >Copy Link</button>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -405,7 +630,7 @@ export default function App() {
     )
   }
 
-  // ── SCREEN: EVENT DETAIL ──
+  // ── SCREEN: EVENT DETAIL ──────────────────────────────────────
   if (selectedEvent) {
     return (
       <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
@@ -423,6 +648,31 @@ export default function App() {
               <StatusTag status={selectedEvent.status} onChange={(newStatus) => { handleStatusChange(selectedEvent.id, newStatus); setSelectedEvent(prev => ({ ...prev, status: newStatus })) }} />
             </div>
             {selectedEvent.hashtag && <p style={{ color: "#334155", fontFamily: "Georgia", fontSize: 13, margin: 0 }}>{selectedEvent.hashtag}</p>}
+
+            {/* Share link */}
+            <div style={{
+              marginTop: 16, background: "#05080e", border: "1px solid #1e2d40",
+              borderRadius: 8, padding: "10px 14px",
+              display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+              <div>
+                <p style={{ color: "#475569", fontSize: 10, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 2px" }}>VENDOR LINK</p>
+                <p style={{ color: "#334155", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>
+                  {window.location.origin}/?event={selectedEvent.id}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/?event=${selectedEvent.id}`)
+                  alert("Copied! Share this link with your vendors.")
+                }}
+                style={{
+                  background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.3)",
+                  borderRadius: 6, color: "#c084fc", fontSize: 11, fontFamily: "Georgia",
+                  padding: "5px 10px", cursor: "pointer"
+                }}
+              >Copy</button>
+            </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -476,7 +726,7 @@ export default function App() {
 
           {(!selectedEvent.sub_events || selectedEvent.sub_events.length === 0) ? (
             <div style={{ textAlign: "center", padding: "40px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14, background: "#0a0f18", border: "1px solid #1e2d40", borderRadius: 12 }}>
-              No sub-events yet. Add your first one —<br />Traditional Wedding, Church Ceremony, Reception...
+              No sub-events yet.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -490,7 +740,7 @@ export default function App() {
     )
   }
 
-  // ── SCREEN: DASHBOARD ──
+  // ── SCREEN: DASHBOARD ─────────────────────────────────────────
   return (
     <div style={{ background: "#05080e", minHeight: "100vh", padding: 32 }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
@@ -517,13 +767,9 @@ export default function App() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>
-            Loading events...
-          </div>
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>Loading events...</div>
         ) : events.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>
-            No events yet. Click + New Event to get started.
-          </div>
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#334155", fontFamily: "Georgia", fontSize: 14 }}>No events yet. Click + New Event to get started.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {events.map(event => (
