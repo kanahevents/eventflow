@@ -201,24 +201,32 @@ function EventCard({ event, onStatusChange, onClick }) {
 }
 
 // ── SUB EVENT CARD ────────────────────────────────────────────
-function SubEventCard({ sub, onClick }) {
+function SubEventCard({ sub, onClick, onDelete }) {
   return (
-    <div onClick={onClick}
-      style={{ background: "#ffffff", border: `1.5px solid ${sub.color}40`, borderRadius: 10, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", transition: "border-color 0.2s" }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = `${sub.color}60`}
-      onMouseLeave={e => e.currentTarget.style.borderColor = `${sub.color}30`}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+    <div style={{ background: "#ffffff", border: `1.5px solid ${sub.color}40`, borderRadius: 10, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "border-color 0.2s" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = `${sub.color}70`}
+      onMouseLeave={e => e.currentTarget.style.borderColor = `${sub.color}40`}>
+      <div onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, cursor: "pointer" }}>
         <div style={{ width: 3, height: 40, borderRadius: 2, background: sub.color, flexShrink: 0 }} />
         <div>
           <p style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 15, margin: "0 0 3px", fontWeight: 600 }}>{sub.label}</p>
           <p style={{ color: "#6b7280", fontFamily: "Georgia", fontSize: 12, margin: 0 }}>{sub.venue} · Starts {sub.startTime}</p>
         </div>
       </div>
-      <div style={{ textAlign: "right" }}>
-        <div style={{ background: `${sub.color}18`, border: `1px solid ${sub.color}40`, borderRadius: 20, padding: "3px 12px", marginBottom: 4 }}>
-          <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>{sub.startTime}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div onClick={onClick} style={{ textAlign: "right", cursor: "pointer" }}>
+          <div style={{ background: `${sub.color}18`, border: `1px solid ${sub.color}40`, borderRadius: 20, padding: "3px 12px", marginBottom: 4 }}>
+            <span style={{ color: sub.color, fontSize: 11, fontFamily: "Georgia", letterSpacing: 1 }}>{sub.startTime}</span>
+          </div>
+          <p style={{ color: "#6b7280", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{(sub.items || []).length} items</p>
         </div>
-        <p style={{ color: "#6b7280", fontSize: 11, fontFamily: "Georgia", margin: 0 }}>{(sub.items || []).length} items</p>
+        {onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete "${sub.label}" and all its timeline items? This cannot be undone.`)) onDelete(sub.id) }}
+            style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 7, color: "#ef4444", fontSize: 13, padding: "6px 10px", cursor: "pointer", flexShrink: 0 }}>
+            🗑
+          </button>
+        )}
       </div>
     </div>
   )
@@ -332,7 +340,7 @@ function DelayLog({ itemId, delayLogs, currentVendor }) {
 //   3. Return JSON matching the sub_events schema below
 //   4. Replace the hardcoded return below with: const res = await fetch("/functions/v1/parse-run-of-show", ...)
 //
-// Current stub: full real parsed data from Deborah & Nifemi wedding document (all sections)
+// Current stub: full real parsed data from Deborah & Nifemi wedding document v2 (May 15, 2026)
 function parseRunOfShow(fileText) {
   const ts = () => Date.now() + Math.floor(Math.random() * 1000000)
   const item = (time, endTime, label, involved, notes) => ({
@@ -341,16 +349,17 @@ function parseRunOfShow(fileText) {
   })
   return {
     sub_events: [
-      // ── PRE-WEDDING ───────────────────────────────────────────
+
+      // ── PRE-WEDDING ──────────────────────────────────────────
       {
         id: ts(), label: "Wed May 13 — Rehearsal", venue: "Isaac Generation Church",
         startTime: "6:40 PM", color: "#a78bfa",
         items: [
           item("6:40 PM","7:00 PM","Kanah Team Arrival & Debrief",["coordinator"],"Precious, Mofe, Hephzibah"),
-          item("7:00 PM","7:15 PM","Arrival & Welcome",["coordinator","dj"],"Couple, officiant, immediate family"),
-          item("7:15 PM","7:40 PM","Ceremony Walkthrough — Round 1",["coordinator","dj"],"Practice processional order (parents, wedding party in pairs, couple). Walk through timing and pacing with music. Practice placement at altar."),
-          item("7:40 PM","8:10 PM","Ceremony Walkthrough — Round 2",["coordinator","dj"],"Full run-through of ceremony structure (entrance, readings, vows, exchange of rings, recessional). Officiant gives reminders on cues. Coordinator notes timing adjustments."),
-          item("8:10 PM","8:25 PM","Final Run — Round 3 (Optional)",["coordinator"],"Quick full start-to-finish practice to ensure everyone is confident."),
+          item("7:00 PM","7:15 PM","Arrival & Welcome",["coordinator","dj"],"Couple, officiant, immediate family, DJ"),
+          item("7:15 PM","7:45 PM","Ceremony Walkthrough — Round 1",["coordinator","dj"],"Practice processional order (parents in pairs, couple). Walk through timing and pacing with music. Practice placement at altar."),
+          item("7:45 PM","8:15 PM","Ceremony Walkthrough — Round 2",["coordinator","dj"],"Full run-through: entrance, readings, vows, exchange of rings, recessional. Officiant gives reminders on cues. Coordinator notes timing adjustments."),
+          item("8:15 PM","8:25 PM","Final Run — Round 3 (Optional)",["coordinator"],"Quick full start-to-finish to ensure everyone is confident."),
           item("8:25 PM","8:35 PM","Reception Entrance Rehearsal",["coordinator"],"Couple and bridal party"),
           item("8:35 PM","9:00 PM","Wrap Up & Wedding Day Expectations",["coordinator"],"Coordinators answer questions. Confirm arrival times. Wedding day roles & responsibilities. Dismissal to rehearsal dinner."),
         ]
@@ -362,23 +371,24 @@ function parseRunOfShow(fileText) {
           item("12:00 PM","8:00 PM","Trad/Reception Decor Setup",["decor"],"Nikki Events. Full venue dress for both traditional and reception spaces."),
         ]
       },
-      // ── WEDDING DAY — PARALLEL TRACKS ────────────────────────
+
+      // ── WEDDING DAY — PARALLEL TRACKS ───────────────────────
       {
         id: ts(), label: "Fri — Getting Ready", venue: "Westin Memorial Hotel",
         startTime: "5:00 AM", color: "#f87171",
         items: [
-          item("5:00 AM","7:00 AM","Bride — Makeup Chair",["photography"],"Bride, Ashley (Moka Beauty)"),
+          item("5:00 AM","7:00 AM","Bride — Makeup Chair",[],"Bride, Ashley (Moka Beauty)"),
           item("5:40 AM","6:00 AM","Gele Artist Arrival",[],"Gele artist arrives"),
-          item("6:00 AM","7:10 AM","Bridesmaids Arrive & Gele — Rolling",[],"8 bridesmaids. Arrive already made up. Stagger based on gele team count. Elizabeth, Esther, Emmanuella (hotel). Tunmise, Precious, Eniola, Kanyin, Angie (commute)."),
+          item("6:00 AM","7:10 AM","Bridesmaids Arrive & Gele — Rolling",[],"8 bridesmaids. Arrive already made up. Elizabeth, Esther, Emmanuella (hotel). Tunmise, Precious, Eniola, Kanyin, Angie (commute). Stagger based on gele team count."),
           item("6:00 AM","7:00 AM","Groom & Groomsmen Get Dressed",[],"Separate suite. 7+ groomsmen."),
           item("6:50 AM","7:00 AM","Bridal Designer Arrival",[],"Aunty Tolu — help Deborah get in her dress"),
           item("6:50 AM","7:00 AM","Videographer Arrives",["videography"],"Mitch — getting-ready B-roll"),
           item("7:00 AM","7:20 AM","Photographer Arrives — Detail Shots",["photography"],"Eli Capture — dress, rings, shoes, bouquet, flat lay"),
           item("7:00 AM","7:20 AM","Bride's Gele & Gets Dressed",["photography","videography"],"Bride & MOH. Photographer & videographer capture moment."),
           item("7:00 AM","7:20 AM","Groom Dressed & Ready",["photography","videography"],"Groom portraits + groomsmen group shot (trad attire)"),
-          item("7:20 AM","8:10 AM","Bridesmaids Group Shot & Portraits",["photography","videography"],"Trad attire. Hotel indoor or outdoor area."),
-          item("8:15 AM","8:30 AM","Full Bridal Party Departs for Trinity",["coordinator","photography","videography"],"All. Confirm transport plan. Mitch to leave at 8:00 AM to set up for trad."),
-          // Post-trad
+          item("7:20 AM","8:10 AM","Bridesmaids Group Shot & Portraits — Trad",["photography","videography"],"Hotel indoor or outdoor area"),
+          item("8:15 AM","8:30 AM","Full Bridal Party Departs for Trinity",["coordinator","photography","videography"],"Confirm transport plan. Mitch leaves at 8:00 AM to set up for trad."),
+          // Post-traditional wedding
           item("11:20 AM","11:30 AM","Lunch Delivery & Setup",["catering"],"Post-traditional wedding rest period"),
           item("11:30 AM","11:40 AM","Couple Arrives at Hotel — HMUA Retouch",["photography"],"Bride, Groom, HMUA. Quick touch-up before portraits."),
           item("11:30 AM","11:40 AM","Rest — Bride & Groom Change to Robes",[],"Bride & Bridesmaids"),
@@ -386,9 +396,9 @@ function parseRunOfShow(fileText) {
           item("12:00 PM","12:30 PM","Hair Stylist Arrival",[],"Busi Styles"),
           item("12:30 PM","1:30 PM","Bride's Hair",[],"Busi Styles"),
           item("12:30 PM","1:30 PM","Groom & Groomsmen Change to Church Attire",["videography"],"Mitch, bestman, groom. Groom putting on the suit shots."),
-          item("1:20 PM","1:40 PM","Bridesmaids Robe Photos",["photography"],"Emmanuel. Bride to join no later than 1:30 PM."),
+          item("1:20 PM","1:40 PM","Bridesmaids Robe Photos",["photography"],"Bride to join no later than 1:30 PM"),
           item("1:40 PM","2:00 PM","Bride Puts On Her Dress",["photography","videography"],""),
-          item("1:00 PM","2:05 PM","Photographer Arrives",["photography"],"CJ"),
+          item("1:00 PM","2:05 PM","Photographer Arrives",["photography"],"CJ - Eli Capture"),
           item("2:05 PM","2:35 PM","First Look & Portraits",["photography","videography"],"Prioritize couple portraits. Grab one or two with bridal party if time."),
           item("2:35 PM","2:45 PM","Head to Church — NO LATER THAN 2:35",["coordinator"],"RCCG Isaac Generation Assembly, Sugar Branch Drive, Houston TX"),
         ]
@@ -397,11 +407,13 @@ function parseRunOfShow(fileText) {
         id: ts(), label: "Fri — Vendor Setup", venue: "Trinity Event Center",
         startTime: "7:00 AM", color: "#2dd4bf",
         items: [
-          item("7:00 AM","8:30 AM","Venue Access / Early Entry",["venue"],"Trinity Venue Team. Confirm earliest access time."),
-          item("7:00 AM","8:30 AM","Trad Decor Setup — Partitioned Half",["decor"],"Nikki Events. Fully dressed by 8:30 AM."),
-          item("7:00 AM","8:30 AM","Reception Decor Setup — Other Half",["decor"],"Nikki Events. Work simultaneously; do not disturb trad side."),
-          item("11:00 AM","5:00 PM","Trad Breakdown & Reception Setup Completion",["decor","staffing"],"Nikki Events. Critical turnaround — all hands on deck. Must be guest-ready before cocktail hour at 5:00 PM."),
-          item("12:00 PM","1:00 PM","Live Band Setup & Sound Check",["livemusic"],"Harmonix. Coordinate stage layout with DJ."),
+          item("7:00 AM","7:30 AM","Venue Access / Early Entry",["venue"],"Trinity Venue Team. Confirm earliest access time with venue."),
+          item("7:30 AM","8:00 AM","Coordinators Arrive",["coordinator"],"Kanah Events Co."),
+          item("7:30 AM","8:30 AM","Trad Decor Setup — Partitioned Half",["decor"],"Nikky Events. Fully dressed by 8:30 AM."),
+          item("7:30 AM","8:30 AM","Reception Decor Setup — Other Half",["decor"],"Nikky Events. Work simultaneously; do not disturb trad side."),
+          item("11:00 AM","5:00 PM","Trad Breakdown & Reception Setup Completion",["decor","staffing"],"Nikky Events. Critical turnaround — all hands on deck. Must be guest-ready before cocktail hour at 5:00 PM."),
+          item("12:00 PM","1:00 PM","Live Band Setup & Sound Check",["livemusic"],"Harmonics. Coordinate stage layout with DJ."),
+          item("1:40 PM","2:00 PM","Precious & Mofe Head to Church",["coordinator"],"Hephzibah remains at Trinity to coordinate setup."),
           item("3:00 PM","4:00 PM","Small Chops Vendor — Onsite Cooking",["catering"],""),
           item("3:00 PM","4:00 PM","Honeywell Catering Setup",["catering"],""),
           item("3:00 PM","4:00 PM","Fruit Display Setup",["catering"],""),
@@ -417,30 +429,32 @@ function parseRunOfShow(fileText) {
           item("6:50 AM","7:00 AM","Videographer Arrives — Hotel",["videography"],"Mitch — getting-ready B-roll"),
           item("7:00 AM","7:20 AM","Photographer Arrives — Detail Shots",["photography"],"CJ / Eli Capture — dress, rings, shoes, bouquet, flat lay"),
           item("7:05 AM","7:20 AM","Groomsmen Portraits",["photography","videography"],"Bridesmaids, CJ - Eli Capture, Mitch"),
-          item("7:20 AM","8:10 AM","Bridesmaids Group Shot & Portraits",["photography","videography"],"Hotel indoor or outdoor area"),
+          item("7:20 AM","8:10 AM","Bridesmaids Group Shot & Portraits — Trad",["photography","videography"],"Hotel indoor or outdoor area"),
           item("8:10 AM","8:30 AM","Trad Decor Detail Shots",["photography"],"Favour (TBD). Before guests arrive."),
           item("9:00 AM","11:00 AM","Key Trad Moments Coverage",["photography"],"Eli Capture's Associate. Confirm key-moments list with Alaga in advance. Family portraits during trad to save time."),
           item("11:00 AM","2:00 PM","Coverage Break",["photography","videography"],"Eli Capture's Team + Mitch"),
           item("11:40 AM","12:00 PM","Videographer Arrival — Westin",["videography"],"Mitch — drone shots and getting ready photos"),
           item("1:00 PM","2:05 PM","Photographer Arrival — Westin",["photography"],"CJ / Eli Capture"),
-          item("2:05 PM","2:35 PM","First Look & Portraits",["photography","videography"],"Prioritize couple portraits but if there is time grab one or two with BP"),
+          item("2:05 PM","2:35 PM","First Look & Portraits",["photography","videography"],"Prioritize couple portraits; grab one or two with BP if time"),
           item("2:20 PM","2:35 PM","Videographer Departs to Church",["videography"],"Mitch heads to church to set up sound and cameras"),
           item("3:00 PM","5:00 PM","Church Ceremony Coverage",["photography","videography"],"Eli Capture, Mitch"),
           item("5:00 PM","5:30 PM","Immediate Family Formals — Church",["photography","coordinator"],"Pre-list groupings. MC/coordinator calls groups. Refer to Shot List for Names."),
+          item("5:30 PM","5:40 PM","Extended Family & After Ceremony Formals",["photography","videography"],"2-3 min per grouping max. Refer to Shot List for Names."),
           item("5:40 PM","6:20 PM","Reception Detail Shots & Bridal Party Session",["photography","videography"],"All, Eli Capture, Mitch. Refer to Shot List for Names."),
           item("10:00 PM","10:00 PM","Photography Coverage Ends",["photography"],"Eli Captures"),
           item("12:00 AM","12:00 AM","Videography End Time",["videography"],""),
         ]
       },
-      // ── EVENT FLOW ────────────────────────────────────────────
+
+      // ── EVENT FLOW ───────────────────────────────────────────
       {
         id: ts(), label: "Traditional Wedding", venue: "Trinity Event Center",
         startTime: "8:30 AM", color: "#fbbf24",
         items: [
           item("8:30 AM","8:55 AM","Guest Arrival & Seating",["coordinator"],"Coordinators to facilitate seating of guests"),
           item("8:55 AM","9:00 AM","Doors Close",["coordinator"],""),
-          item("9:00 AM","9:15 AM","Family Entrance & Introductions",["coordinator","liveband","mc"],"Groom's Family: Korin Iyin - EmmaOMG. Bride's Family: Mercy Chinwo"),
-          item("9:15 AM","10:35 AM","Traditional Ceremony",["coordinator","liveband","photography","videography"],"Proposal letter reading, Groom entrance, Idobale, Bride entrance, Veiling, Wearing of cap, Eru Iyawo"),
+          item("9:00 AM","9:15 AM","Family Entrance & Introductions",["coordinator","liveband","mc"],"Groom's Family: Korin Iyin - EmmaOMG. Bride's Family: Mercy Chinwo. Proposal letter reading (Esther)."),
+          item("9:15 AM","10:35 AM","Traditional Ceremony",["coordinator","liveband","photography","videography"],"Groom's entrance (Music mix provided). Idobale. Bride's entrance (Music mix provided). Veiling of the bride. Wearing of the cap. Eru Iyawo."),
           item("10:35 AM","11:00 AM","Introduction of the New Couple",["coordinator","mc","photography"],"Couple request for igbe iyawo. Capture pictures with families."),
           item("11:00 AM","11:15 AM","Prompt Dismissal",["coordinator","mc"],""),
         ]
@@ -449,22 +463,23 @@ function parseRunOfShow(fileText) {
         id: ts(), label: "Church Ceremony", venue: "Isaac Generation — RCCG",
         startTime: "2:30 PM", color: "#818cf8",
         items: [
-          item("2:30 PM","2:45 PM","Guest Arrival & Seating",["coordinator"],"Ushers to facilitate seating"),
+          item("2:30 PM","2:45 PM","Guest Arrival & Seating",["coordinator"],"Ushers to facilitate seating of guests"),
           item("2:45 PM","2:50 PM","Guests Seated",["coordinator"],"Alagas, Bride's Family"),
           item("2:50 PM","3:00 PM","Closed Doors",["coordinator"],""),
-          item("3:00 PM","3:05 PM","Opening Prayer",["coordinator"],""),
-          item("3:05 PM","3:15 PM","Praise & Worship",["livemusic"],"Choir leads"),
-          item("3:15 PM","3:20 PM","Entrance of the Bridal Party",["coordinator","dj","photography","videography"],"Groom Song: You (Without You) - Savy Henry. Bridal Party Song: Perfect - Paul Hankinson. Pairs: Elizabeth & Oluwaferanmi, Emmanuella & Emmanuel, Esther & Opeyemi, Eniola & Samuel, Tunmise & Olumide, Precious & Kojo, Angie & IK, Kanyin & Emmanuel & Victor"),
-          item("3:20 PM","3:22 PM","ALL RISE",["coordinator"],"Flowergirls (4), Little Bride & Ring Bearer"),
-          item("3:22 PM","3:27 PM","Bride's Entrance",["coordinator","photography","videography"],"Bride & Pastor Babalola. Song: Perfectly Perfect - Savy Henry"),
-          item("3:27 PM","3:35 PM","Processional Hymn",["livemusic"],"Choir. Congregation remains standing."),
+          item("3:00 PM","3:05 PM","Opening Prayer",["coordinator"],"Open for day-of assignment"),
+          item("3:05 PM","3:15 PM","Praise & Worship",["livemusic"],"Choir"),
+          item("3:15 PM","3:22 PM","Processional Hymn",["livemusic"],"Choir. Congregation remains standing."),
+          item("3:22 PM","3:28 PM","Entrance of the Bridal Party",["coordinator","dj","photography","videography"],"Groom Song: You (Without You) - Savy Henry (on loop until BP entrance complete). Pairs: Elizabeth & Oluwaferanmi, Emmanuella & Emmanuel, Esther & Opeyemi, Eniola & Samuel, Tunmise & Olumide, Precious & Kojo, Angie & IK, Kanyin & Emmanuel & Victor. Flowergirls (4), Little Bride & Ring Bearer."),
+          item("3:28 PM","3:29 PM","ALL RISE",["coordinator"],""),
+          item("3:29 PM","3:34 PM","Bride's Entrance",["coordinator","photography","videography"],"Bride & Pastor Babalola. Song: Perfectly Perfect - Savy Henry"),
           item("3:35 PM","3:55 PM","Joining & Blessing of the Couple",["coordinator"],"Pastor Awobajo officiates"),
-          item("3:55 PM","4:02 PM","Special Ministration",["livemusic"],"Choir"),
-          item("4:05 PM","4:20 PM","Short Exhortation",["coordinator"],"Rev. John"),
-          item("4:20 PM","4:27 PM","Prayer for the Couple",["coordinator"],"Pst. & Pst Mrs. Ojo (Summons Ministers)"),
-          item("4:27 PM","4:37 PM","Signing of the Marriage Register",["coordinator","photography","videography"],"Pastor Awobajo, Bride & Groom, Parents, MOH & BM. Choir leads praise."),
-          item("4:37 PM","4:45 PM","Thanksgiving & Closing Prayer",["livemusic","coordinator"],"Choir; Pastor Ayeni"),
-          item("4:45 PM","5:00 PM","Recessional Hymn & Dismissal",["coordinator","mc"],"Couple exits, bridal party follows. Depart to Trinity."),
+          item("3:55 PM","4:00 PM","Special Ministration",["livemusic"],"Min. Ebenezer — 4 songs"),
+          item("4:00 PM","4:15 PM","Short Exhortation",["coordinator"],"Rev. John"),
+          item("4:25 PM","4:40 PM","Signing of the Marriage Register",["coordinator","photography","videography"],"Pastor Awobajo, Bride & Groom, Parents, MOH & BM. Ebuka leads praise. Signing is outside the sanctuary in the conference room — ensure all is in place."),
+          item("4:45 PM","4:55 PM","Thanksgiving Praise",["livemusic","coordinator"],"Ebuka; Pastor Ayeni"),
+          item("4:55 PM","5:05 PM","Prayer for the Couple",["coordinator"],"Pst. & Pst Mrs. Ojo (Summons Ministers)"),
+          item("5:05 PM","5:15 PM","Recessional Hymn",["coordinator"],"Couple exits; bridal party follows"),
+          item("5:30 PM","5:45 PM","Depart to Trinity — Dismissal of All Guests",["coordinator","mc"],"Deborah & Nifemi & BP. ~20 min drive; cocktail hour in progress."),
         ]
       },
       {
@@ -472,30 +487,32 @@ function parseRunOfShow(fileText) {
         startTime: "5:00 PM", color: "#34d399",
         items: [
           item("5:00 PM","5:30 PM","Guest Arrival — Cocktail Hour",["coordinator","catering","staffing"],"Trays up: appetizers, small chops, fruit. Bar open."),
-          item("5:30 PM","6:20 PM","Cocktail Hour",["coordinator","catering","staffing","photography","videography"],"Bridal party photos in banquet hall"),
+          item("5:30 PM","6:30 PM","Cocktail Hour",["coordinator","catering","staffing","photography","videography"],"Bridal party photos in banquet (contingent on ceremony end time). Nikky Events Staff, bar open."),
           item("6:20 PM","6:30 PM","Guest Transition to Hall",["coordinator","mc","dj"],"MC invites guests in. Coordinators facilitate seating."),
-          item("6:30 PM","6:35 PM","MC Opening Remarks",["mc"],"House-keeping: No direct spraying, basket provided. Money changing table."),
+          item("6:30 PM","6:35 PM","MC Opening Remarks",["mc"],"House-keeping: No direct spraying of money (basket provided). Money changing table."),
           item("6:35 PM","6:45 PM","Bride's Family Intro & Entrance",["mc","livemusic"],"Parents of the Bride: Pastor & Mrs Jide Babalola"),
-          item("6:45 PM","6:55 PM","Groom's Family Intro & Entrance",["mc","livemusic"],"Pastor Oluwasegun & Pastor Omotayo Ogunmodede Joseph"),
-          item("6:55 PM","7:00 PM","Bridal Party Entrance",["mc","dj","photography","videography"],"Soul train on the floor. Mix will be provided."),
-          item("7:00 PM","7:15 PM","Couple Grand Entrance",["mc","dj","photography","videography"],"ALL RISE. Song TBD."),
+          item("6:45 PM","6:55 PM","Groom's Family Intro & Entrance",["mc","livemusic"],"Pastor Oluwasegun Ogunmodede Joseph & Pastor Omotayo Ogunmodede Joseph"),
+          item("6:55 PM","7:00 PM","Bridal Party Entrance",["mc","dj","photography","videography"],"Soul train on the floor. Mix will be provided. Shoutouts: Elizabeth & Oluwaferanmi, Emmanuella & Emmanuel, Esther & Opeyemi, Eniola & Samuel, Tunmise & Olumide, Precious & Kojo, Angie & IK, Kanyin & Emmanuel & Victor."),
+          item("7:00 PM","7:15 PM","Couple Grand Entrance — ALL RISE",["mc","dj","photography","videography"],"Song TBD."),
           item("7:15 PM","7:20 PM","Opening Prayer",["coordinator"],"Pastor Akintunde"),
-          item("7:20 PM","7:55 PM","Dinner Service & Photo Tour",["coordinator","catering","staffing","photography","videography"],"Table dismissal by Kanah. Couple greets each table. Live band plays. 25 min photo tour."),
+          item("7:20 PM","7:20 PM","Dinner Service Begins",["catering","staffing","coordinator"],"Table dismissal by Kanah coordinators. Staff assigned to estate table to take orders. Team Kanah to confirm Couple's Dinner is served."),
+          item("7:20 PM","7:50 PM","Photo Tour",["photography","videography","livemusic"],"Bride and Groom & CJ & Mitch. Live band plays. Couple greets each table (not estate table) and takes photos — 25 mins. Remain seated until couple arrives."),
           item("7:55 PM","8:00 PM","Mother-Son Dance",["dj","photography","videography"],"Song: Mama - Adekunle Gold"),
           item("8:00 PM","8:05 PM","Mother-Daughter Dance",["dj","photography","videography"],"Song: Iya mi (Sweet Mama)"),
           item("8:05 PM","8:10 PM","Father-Daughter Dance",["dj","photography","videography"],"Song: Daddy - Segun Johnson"),
           item("8:10 PM","8:17 PM","First Dance",["dj","photography","videography"],"No spraying. Songs: Second to None & LOML - Savy Henry"),
           item("8:10 PM","8:17 PM","Wine Service",["staffing"],"Fill guests glasses ahead of toast"),
           item("8:17 PM","8:27 PM","Cake Cutting",["mc","dj","photography","videography","catering"],"Song: Now and Always - Savy Henry. Suggests: Spell Jesus."),
-          item("8:27 PM","8:37 PM","Toast",["mc","photography","videography"],"Bestman: Oluwaferanmi Joseph. MOH: Elizabeth Babalola. 5 mins each. Couple exits to changing room by 8:37 PM."),
-          item("8:40 PM","9:20 PM","Parents on the Dancefloor",["livemusic","coordinator"],"Bride's parents 20 mins, Groom's parents 20 mins. Couple in changing room."),
+          item("8:27 PM","8:37 PM","Toast",["mc","photography","videography"],"Bestman: Oluwaferanmi Joseph. MOH: Elizabeth Babalola. 5 mins each. Couple exits to changing room by 8:37 PM (out by 8:45 PM)."),
+          item("8:40 PM","9:20 PM","Parents on the Dancefloor",["livemusic","coordinator"],"Harmonix. Bride's parents 20 mins, Groom's parents 20 mins."),
           item("9:05 PM","9:20 PM","Quick Portraits — Second Look",["photography","videography"],"CJ, Mitch & Deborah & Nifemi"),
-          item("9:20 PM","9:35 PM","Bride & Groom 2nd Entrance",["mc","livemusic","photography","videography"],"Allow spraying on dancefloor."),
-          item("9:40 PM","9:45 PM","Vote of Thanks",["mc"],"5 mins each — 4 speakers. Staff serve peppersoup."),
-          item("9:40 PM","9:50 PM","Serve Dessert & Souvenirs",["catering","staffing","coordinator"],"Sheet cake plated. Bottle raffle & gift bags distributed."),
-          item("9:50 PM","11:30 PM","After Party",["mc","dj"],"DJ Praise. Late night snack at 10:20 PM: Yam & Plantain."),
-          item("11:00 PM","11:30 PM","Cleanup & Breakdown",["decor","staffing"],"Nikki Events"),
-          item("11:30 PM","12:00 AM","The Josephs Send-Off",["coordinator","mc"],"Guests move to pavilion. Bride & Groom send-off at 11:40 PM. Coordinators distribute sparklers."),
+          item("9:20 PM","9:35 PM","Bride & Groom 2nd Entrance",["mc","livemusic","photography","videography"],"Allow spraying on dancefloor. Live Band plays."),
+          item("9:40 PM","9:45 PM","Vote of Thanks",["mc"],"5 mins each — 4 speakers (including couple). Staff serve peppersoup."),
+          item("9:40 PM","9:50 PM","Serve Dessert & Souvenirs",["catering","staffing","coordinator"],"Sheet cake plated. Start on opposing side from photo tour. Bottle raffle & gift bags distributed."),
+          item("9:50 PM","11:30 PM","Transition to After Party",["mc","dj"],"MC & DJ Praise. Late night snack at 10:20 PM: Yam & Plantain (Nikky Staff)."),
+          item("11:00 PM","11:30 PM","Cleanup & Breakdown Begins",["decor","staffing"],"Nikky Events"),
+          item("11:30 PM","12:00 AM","The Josephs Send-Off",["coordinator","mc"],"MC announces movement to pavilion outside. Bride & Groom send-off at 11:40 PM. Ride waiting outside. Coordinators distribute sparklers to guests."),
+          item("12:00 AM","12:00 AM","Videography End Time",["videography"],""),
         ]
       }
     ]
@@ -853,120 +870,6 @@ function VendorItemCard({ item, currentVendor, onLogDelay, onStatusChange, onEdi
 }
 
 
-// ── DAY MAP — PARALLEL TRACKS VIEW ──────────────────────────
-function DayMap({ subEvents }) {
-  // Build time bounds across all sub-events
-  const allItems = subEvents.flatMap(sub =>
-    (sub.items || []).map(item => ({ ...item, subColor: sub.color, subLabel: sub.label }))
-  )
-  if (allItems.length === 0) return (
-    <div style={{ textAlign: "center", padding: 40, color: "#6b7280", fontFamily: "Georgia" }}>No items to display.</div>
-  )
-
-  const parseT = (t) => {
-    if (!t) return 0
-    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
-    if (!m) return 0
-    let h = parseInt(m[1]), mn = parseInt(m[2])
-    if (m[3].toUpperCase() === "PM" && h !== 12) h += 12
-    if (m[3].toUpperCase() === "AM" && h === 12) h = 0
-    return h * 60 + mn
-  }
-
-  const times = allItems.flatMap(i => [parseT(i.startTime || i.time), parseT(i.endTime || i.time)]).filter(t => t > 0)
-  const minT = Math.floor(Math.min(...times) / 60) * 60
-  const maxT = Math.ceil(Math.max(...times) / 60) * 60
-  const totalMins = maxT - minT
-  const pct = (t) => ((parseT(t) - minT) / totalMins * 100).toFixed(2)
-  const dur = (s, e) => Math.max(((parseT(e) - parseT(s)) / totalMins * 100), 0.8).toFixed(2)
-
-  const fmt = (mins) => {
-    const h = Math.floor(mins / 60), m = mins % 60
-    const mer = h >= 12 ? "PM" : "AM"
-    const dh = h > 12 ? h - 12 : h === 0 ? 12 : h
-    return `${dh}:${String(m).padStart(2, "0")} ${mer}`
-  }
-
-  // Hour markers
-  const hours = []
-  for (let t = minT; t <= maxT; t += 60) hours.push(t)
-
-  // Now indicator
-  const now = new Date()
-  const nowMins = now.getHours() * 60 + now.getMinutes()
-  const nowPct = nowMins >= minT && nowMins <= maxT ? ((nowMins - minT) / totalMins * 100).toFixed(2) : null
-
-  return (
-    <div style={{ overflowX: "auto", paddingBottom: 8 }}>
-      <div style={{ minWidth: 600 }}>
-        {/* Hour ruler */}
-        <div style={{ position: "relative", height: 28, marginLeft: 110, marginBottom: 4, borderBottom: "1px solid #e5e7eb" }}>
-          {hours.map(h => (
-            <div key={h} style={{ position: "absolute", left: `${((h - minT) / totalMins * 100).toFixed(2)}%`, top: 0, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ color: "#9ca3af", fontSize: 9, fontFamily: "Georgia", whiteSpace: "nowrap" }}>{fmt(h)}</span>
-              <div style={{ width: 1, height: 6, background: "#e5e7eb", marginTop: 2 }} />
-            </div>
-          ))}
-          {/* Now line on ruler */}
-          {nowPct && (
-            <div style={{ position: "absolute", left: `${nowPct}%`, top: 0, bottom: 0, width: 2, background: "#7c3aed", borderRadius: 1 }} />
-          )}
-        </div>
-
-        {/* Sub-event rows */}
-        {subEvents.map(sub => {
-          const subItems = (sub.items || []).filter(i => parseT(i.startTime || i.time) > 0)
-          if (subItems.length === 0) return null
-          return (
-            <div key={sub.id} style={{ display: "flex", alignItems: "flex-start", marginBottom: 10 }}>
-              {/* Label */}
-              <div style={{ width: 106, flexShrink: 0, paddingRight: 4, paddingTop: 4 }}>
-                <div style={{ background: `${sub.color}15`, border: `1px solid ${sub.color}40`, borderRadius: 6, padding: "3px 6px" }}>
-                  <p style={{ color: sub.color, fontSize: 9, fontFamily: "Georgia", fontWeight: 700, margin: 0, lineHeight: 1.3, letterSpacing: 0.5 }}>{sub.label}</p>
-                  <p style={{ color: "#9ca3af", fontSize: 8, fontFamily: "Georgia", margin: 0 }}>{sub.venue?.split(" — ")[0] || sub.venue}</p>
-                </div>
-              </div>
-              {/* Track */}
-              <div style={{ flex: 1, position: "relative", height: 38, background: "#f9fafb", borderRadius: 6, border: "1px solid #f3f4f6" }}>
-                {/* Now line on track */}
-                {nowPct && (
-                  <div style={{ position: "absolute", left: `${nowPct}%`, top: 0, bottom: 0, width: 1.5, background: "#7c3aed", opacity: 0.5, zIndex: 2 }} />
-                )}
-                {subItems.map((item, idx) => {
-                  const left = pct(item.startTime || item.time)
-                  const width = dur(item.startTime || item.time, item.endTime || item.time)
-                  const statusColor = item.itemStatus === "completed" || item.itemStatus === "early" ? "#34d399"
-                    : item.itemStatus === "delayed" ? "#f87171"
-                    : item.itemStatus === "inprogress" ? "#fbbf24"
-                    : item.itemStatus === "skipped" ? "#d1d5db"
-                    : sub.color
-                  return (
-                    <div key={idx} title={`${item.startTime || item.time} — ${item.endTime || ""} · ${item.label}`}
-                      style={{
-                        position: "absolute", left: `${left}%`, width: `${width}%`,
-                        top: 4, height: 30, background: `${statusColor}22`,
-                        border: `1.5px solid ${statusColor}60`, borderRadius: 4,
-                        overflow: "hidden", cursor: "default", boxSizing: "border-box"
-                      }}>
-                      <div style={{ padding: "2px 4px" }}>
-                        <p style={{ color: statusColor, fontSize: 7.5, fontFamily: "Georgia", fontWeight: 700, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</p>
-                        <p style={{ color: "#9ca3af", fontSize: 7, fontFamily: "Georgia", margin: 0 }}>{item.startTime || item.time}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
-
-        <div style={{ marginLeft: 110, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-          {nowPct && <><div style={{ width: 10, height: 2, background: "#7c3aed", borderRadius: 1 }} /><span style={{ color: "#7c3aed", fontSize: 9, fontFamily: "Georgia" }}>Now</span></>}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── MAIN APP ──────────────────────────────────────────────────
 export default function App() {
@@ -995,8 +898,6 @@ export default function App() {
 
   // Vendor filter (vendor timeline only)
   const [vendorFilter, setVendorFilter] = useState("All")
-  // Day map toggle
-  const [viewMode, setViewMode] = useState("timeline") // "timeline" | "daymap"
 
   // Vendor editing
   const [editingVendor, setEditingVendor] = useState(null)
@@ -1136,6 +1037,13 @@ export default function App() {
     setEvents(prev => prev.map(e => e.id === id ? { ...e, status: newStatus } : e))
   }
 
+  const handleDeleteEvent = async (id) => {
+    if (!window.confirm("Delete this event and all its data? This cannot be undone.")) return
+    await supabase.from("events").delete().eq("id", id)
+    setEvents(prev => prev.filter(e => e.id !== id))
+    setSelectedEvent(null)
+  }
+
   const handleAddSubEvent = async () => {
     if (!subLabel || !subStartTime) return
     const newSub = { id: Date.now(), label: subLabel, venue: subVenue, startTime: subStartTime, color: subColor, items: [] }
@@ -1147,6 +1055,16 @@ export default function App() {
     }
     setSubLabel(""); setSubVenue(""); setSubStartTime(""); setSubColor("#c084fc")
     setShowSubEventForm(false)
+  }
+
+  const handleDeleteSubEvent = async (subId) => {
+    if (!selectedEvent) return
+    const updatedSubEvents = (selectedEvent.sub_events || []).filter(s => String(s.id) !== String(subId))
+    const { error } = await supabase.from("events").update({ sub_events: updatedSubEvents }).eq("id", selectedEvent.id)
+    if (!error) {
+      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, sub_events: updatedSubEvents } : e))
+      setSelectedEvent(prev => ({ ...prev, sub_events: updatedSubEvents }))
+    }
   }
 
   // Import run-of-show: append parsed sub_events to existing event
@@ -1664,29 +1582,11 @@ export default function App() {
             ))}
           </div>
 
-          {/* View toggle — coordinator only */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: 0 }}>
-              {coordinator ? "ALL ITEMS" : "YOUR ITEMS"} — {myItems.length} tasks
-            </p>
-            {coordinator && (
-              <div style={{ display: "flex", gap: 0, border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                {[["timeline","☰ Timeline"],["daymap","⬛ Day Map"]].map(([mode, label]) => (
-                  <button key={mode} onClick={() => setViewMode(mode)} style={{
-                    padding: "5px 14px", cursor: "pointer", fontFamily: "Georgia", fontSize: 11,
-                    background: viewMode === mode ? "#7c3aed" : "#ffffff",
-                    color: viewMode === mode ? "#ffffff" : "#6b7280",
-                    border: "none", borderRight: mode === "timeline" ? "1px solid #e5e7eb" : "none",
-                    fontWeight: viewMode === mode ? 700 : 400
-                  }}>{label}</button>
-                ))}
-              </div>
-            )}
-          </div>
+          <p style={{ color: "#4b5563", fontSize: 11, letterSpacing: 2, fontFamily: "Georgia", margin: "0 0 14px" }}>
+            {coordinator ? "ALL ITEMS" : "YOUR ITEMS"} — {myItems.length} tasks
+          </p>
 
-          {viewMode === "daymap" && coordinator ? (
-            <DayMap subEvents={vendorEvent.sub_events || []} />
-          ) : myItems.length === 0 ? (
+          {myItems.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>
               No items assigned to {currentVendor.label} yet.
             </div>
@@ -1782,19 +1682,7 @@ export default function App() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Timeline</h2>
-              <div style={{ display: "flex", gap: 0, border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                {[["timeline","☰"],["daymap","⬛"]].map(([mode, icon]) => (
-                  <button key={mode} onClick={() => setViewMode(mode)} style={{
-                    padding: "4px 10px", cursor: "pointer", fontFamily: "Georgia", fontSize: 11,
-                    background: viewMode === mode ? "#7c3aed" : "#ffffff",
-                    color: viewMode === mode ? "#ffffff" : "#6b7280",
-                    border: "none", borderRight: mode === "timeline" ? "1px solid #e5e7eb" : "none"
-                  }} title={mode === "timeline" ? "Timeline View" : "Day Map View"}>{icon}</button>
-                ))}
-              </div>
-            </div>
+            <h2 style={{ color: "#1a1a2e", fontFamily: "Georgia", fontSize: 18, margin: 0 }}>Timeline</h2>
             <button onClick={() => setShowItemForm(!showItemForm)} style={{ background: showItemForm ? "#f3f4f6" : selectedSub.color, border: "none", borderRadius: 8, color: showItemForm ? "#6b7280" : "#ffffff", fontSize: 12, fontWeight: 700, padding: "7px 14px", cursor: "pointer", fontFamily: "Georgia" }}>
               {showItemForm ? "Cancel" : "+ Add Item"}
             </button>
@@ -1851,9 +1739,7 @@ export default function App() {
             </div>
           )}
 
-          {viewMode === "daymap" ? (
-            <DayMap subEvents={selectedEvent.sub_events || []} />
-          ) : (!selectedSub.items || selectedSub.items.length === 0) ? (
+          {(!selectedSub.items || selectedSub.items.length === 0) ? (
             <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280", fontFamily: "Georgia", fontSize: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>No timeline items yet.</div>
           ) : (
             <div style={{ position: "relative" }}>
@@ -1880,7 +1766,13 @@ export default function App() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <button onClick={() => { setSelectedEvent(null); setShowSubEventForm(false); setShowVendorManager(false) }}
               style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", fontFamily: "Georgia", fontSize: 13, padding: 0 }}>← All Events</button>
-            <LiveClock />
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <LiveClock />
+              <button onClick={() => handleDeleteEvent(selectedEvent.id)}
+                style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 7, color: "#ef4444", fontSize: 11, fontFamily: "Georgia", padding: "6px 12px", cursor: "pointer" }}>
+                🗑 Delete Event
+              </button>
+            </div>
           </div>
 
           <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24, marginBottom: 24 }}>
@@ -2046,7 +1938,7 @@ export default function App() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {selectedEvent.sub_events.map(sub => (
-                <SubEventCard key={sub.id} sub={sub} onClick={() => { setSelectedSub(sub); loadDelayLogs(selectedEvent.id) }} />
+                <SubEventCard key={sub.id} sub={sub} onClick={() => { setSelectedSub(sub); loadDelayLogs(selectedEvent.id) }} onDelete={handleDeleteSubEvent} />
               ))}
             </div>
           )}
@@ -2099,7 +1991,7 @@ export default function App() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {events.map(event => (
-              <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} onClick={() => { setSelectedEvent(event); loadEventVendors(event.id); loadDelayLogs(event.id) }} />
+              <EventCard key={event.id} event={event} onStatusChange={handleStatusChange} onClick={() => { setSelectedEvent(event); loadEventVendors(event.id); loadDelayLogs(event.id) }} onDelete={handleDeleteEvent} />
             ))}
           </div>
         )}
